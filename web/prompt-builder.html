@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prompt builder — better-bots</title>
+<script src="/theme-boot.js"></script>
+<link rel="stylesheet" href="/style.css">
+<style>
+  .builder { max-width: 960px; margin: 0 auto; padding: 28px 22px 60px; }
+  .builder h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; }
+  .builder .lede { margin: 0 0 20px; color: var(--ink-faint); font-size: 13.5px; max-width: 64ch; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 880px) { .cols { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .card h2 { margin: 0 0 12px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
+  .traits { display: grid; gap: 8px; }
+  .traits label { display: flex; gap: 9px; align-items: flex-start; margin: 0; text-transform: none; letter-spacing: normal; font-size: 13px; color: var(--ink); cursor: pointer; }
+  .traits input { width: auto; margin: 2px 0 0; flex: none; }
+  .traits small { display: block; color: var(--ink-faint); font-size: 11.5px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .modes { display: flex; gap: 6px; margin-bottom: 16px; }
+  .modes button { flex: none; }
+  .grill { margin-bottom: 20px; }
+  .grill-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .grill-q { margin: 10px 0 4px; font-size: 16px; font-weight: 550; color: var(--ink); max-width: 66ch; }
+  .grill .hint { margin: 0 0 10px; max-width: 66ch; }
+  .grill-bar { height: 3px; margin-top: 14px; background: var(--panel-2); border-radius: 2px; overflow: hidden; }
+  .grill-bar > div { height: 100%; background: var(--accent); transition: width .18s ease; }
+  .presets button { flex: none; }
+  #out { width: 100%; min-height: 470px; font: 12.5px/1.6 var(--mono); resize: vertical; }
+  .outhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .outhead h2 { margin: 0; }
+  .count { font: 11px var(--mono); color: var(--ink-faint); }
+</style>
+</head>
+<body>
+<div class="builder">
+  <h1>Prompt builder</h1>
+  <p class="lede">Describe the bot; get a system prompt written against how this host actually behaves —
+    fire-and-forget peer messages, hidden wakes, scoped memory, approval-gated actions. Paste the result into
+    a bot's <strong>Prompt</strong> field in Settings.</p>
+
+  <div class="modes">
+    <button class="ghost" id="mode-form">Form</button>
+    <button class="primary" id="mode-grill">Grill me</button>
+  </div>
+
+  <section id="grill" class="card grill" hidden>
+    <div class="grill-head">
+      <h2 id="grill-step">Question 1</h2>
+      <button class="ghost" id="grill-quit">Back to form</button>
+    </div>
+    <p class="grill-q" id="grill-question"></p>
+    <p class="hint" id="grill-why"></p>
+    <textarea id="grill-answer" rows="4" placeholder="Say it plainly. Half an answer is fine — vagueness is what this is for."></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="primary" id="grill-next">Next</button>
+      <button class="ghost" id="grill-skip">Skip</button>
+      <button class="ghost" id="grill-back">Back</button>
+    </div>
+    <div class="grill-bar"><div id="grill-fill"></div></div>
+  </section>
+
+  <div class="presets">
+    <button class="ghost" data-preset="lead">Chief of staff</button>
+    <button class="ghost" data-preset="researcher">Researcher</button>
+    <button class="ghost" data-preset="reviewer">Reviewer</button>
+    <button class="ghost" data-preset="briefer">Briefer</button>
+    <button class="ghost" data-preset="blank">Blank</button>
+  </div>
+
+  <div class="cols">
+    <div class="card">
+      <h2>The bot</h2>
+      <label>Name<input id="name" autocomplete="off" placeholder="Ada"></label>
+      <label>Role<input id="role" autocomplete="off" placeholder="researcher"></label>
+      <label>Niche<input id="niche" autocomplete="off" placeholder="DeFi protocol security"></label>
+      <label>Who it works for<input id="principal" autocomplete="off" placeholder="Sam"></label>
+      <label>About role
+        <textarea id="job" rows="3" placeholder="What this role is for, and what good work looks like in it."></textarea>
+      </label>
+      <label>How you want it to answer
+        <textarea id="style" rows="2" placeholder="Short. Lead with the conclusion. Say what you are unsure about."></textarea>
+      </label>
+
+      <h2 style="margin-top:18px">Behaviour</h2>
+      <div class="traits">
+        <label><input type="checkbox" id="t-lead"><span>Leads the team<small>Delegates, and is the one who reports back</small></span></label>
+        <label><input type="checkbox" id="t-peers" checked><span>Talks to teammates<small>Explains fire-and-forget messaging</small></span></label>
+        <label><input type="checkbox" id="t-tools" checked><span>Uses tools<small>Call them; never narrate calling them</small></span></label>
+        <label><input type="checkbox" id="t-files"><span>Reads and writes files<small>Shared workspace — no clobbering</small></span></label>
+        <label><input type="checkbox" id="t-memory" checked><span>Remembers things<small>Durable facts, not passing detail</small></span></label>
+        <label><input type="checkbox" id="t-approval" checked><span>Asks before acting outward<small>Approval-gated side effects</small></span></label>
+        <label><input type="checkbox" id="t-uncertain" checked><span>Says when it is unsure<small>No confident guessing</small></span></label>
+        <label><input type="checkbox" id="t-phone"><span>Read on a phone<small>Hard brevity</small></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="outhead">
+        <h2>Prompt</h2>
+        <span class="count" id="count"></span>
+      </div>
+      <textarea id="out" spellcheck="false" readonly></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="primary" id="copy">Copy</button>
+        <button class="ghost" id="edit">Make editable</button>
+        <button class="ghost" id="clear">Clear</button>
+      </div>
+      <p class="hint">Nothing leaves the page — this runs entirely in your browser.</p>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/prompt-builder.js"></script>
+</body>
+</html>

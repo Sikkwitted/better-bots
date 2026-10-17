@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {makeHost, call, say} from './helpers.js';
+const PNG='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+test('owned desktop screenshot reaches next model step as pixels without logging base64', async () => {
+ const {host,adapter,dir}=makeHost();
+ host.registry.create({id:'reviewer',profile:{name:'Reviewer'}});
+ const {assignment}=host.computer.assignWindow('reviewer');
+ fs.mkdirSync(path.join(dir,'computer','shots'),{recursive:true});
+ fs.writeFileSync(path.join(dir,'computer','shots','window-0-123.png'),Buffer.from(PNG,'base64'));
+ host.computer.backend.perform=async()=>({performed:true,screenshot:'window-0-123.png'});
+ adapter.script=()=>adapter.calls.length===1?[call('UseScreen',{window_index:assignment.window_index,owner_token:assignment.owner_token,action:'screenshot'})]:[say('observed')];
+ const run=host.userRequest({agent_id:'reviewer',text:'Inspect your screen'});await host.drain();
+ assert.equal(host.turnResult(run.id).status,'completed');
+ const observation=adapter.calls[1].messages.find(m=>m.screen_observation);
+ assert.ok(observation, JSON.stringify(adapter.calls[1].messages));
+ assert.deepEqual(observation.images,[{media_type:'image/png',data:PNG}]);
+ assert.ok(!JSON.stringify(host.transcripts.all('agent','reviewer')).includes(PNG));
+});
+test('recovery reclaims only deleted agents desktop slots', async () => {
+ const {host}=makeHost({window_count:2});
+ host.registry.create({id:'kept',profile:{name:'Kept'}});
+ host.registry.create({id:'deleted',profile:{name:'Deleted'}});
+ const kept=host.computer.assignWindow('kept').assignment;
+ host.computer.assignWindow('deleted');
+ host.registry.delete('deleted',{confirm:true});host.recover();
+ assert.equal(host.computer.assignments().length,1);
+ assert.equal(host.computer.assignments()[0].owner_token,kept.owner_token);
+ await host.computer.recoverReleases();
+ assert.equal(host.computer.assignWindow('replacement').ok,true);
+});
+test('deleting an agent through the API releases its desktop slot immediately', async t => {
+ const {createServer}=await import('../src/server.js');
+ const {host}=makeHost({window_count:1});host.registry.create({id:'deleted',profile:{name:'Deleted'}});
+ host.computer.assignWindow('deleted');
+ const server=createServer({host,live:false});await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>server.close());
+ const response=await fetch(`http://127.0.0.1:${server.address().port}/api/agents`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({agent_id:'deleted'})});
+ assert.equal(response.status,200);assert.equal(host.computer.assignments().length,0);
+ assert.equal(host.computer.assignWindow('replacement').ok,true);
+});

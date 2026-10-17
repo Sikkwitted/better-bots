@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { makeHost } from '../helpers.js';
+const { host } = makeHost({ dir: process.argv[2] });
+const agent = host.registry.create({ id: 'agt_a' });
+const dir = path.join(host.workspace, 'agents/agt_a/dist'); fs.mkdirSync(dir, { recursive: true });
+fs.writeFileSync(path.join(dir, 'index.html'), '<h1>Preview</h1>');
+const run = host.userRequest({ agent_id: agent.id, text: 'preview' });
+await host.previews.start({ agent, input: { directory: 'dist', files: ['index.html'] }, run });
+process.kill(process.pid, 'SIGKILL');

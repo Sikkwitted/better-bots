@@ -1,0 +1,90 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Install sandbox and PDF tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y bubblewrap poppler-utils
+          # Match the production per-program user-namespace permission.
+          sudo tee /etc/apparmor.d/bwrap > /dev/null <<'PROFILE'
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile bwrap /usr/bin/bwrap flags=(unconfined) {
+            userns,
+            include if exists <local/bwrap>
+          }
+          PROFILE
+          sudo apparmor_parser -r /etc/apparmor.d/bwrap
+          bwrap --unshare-all --ro-bind / / -- /bin/true
+      - run: npm ci --no-audit --no-fund
+      - name: Syntax and whitespace
+        run: |
+          # Every tracked text file, against the empty tree: a fresh checkout has
+          # no working-tree diff, so a plain `git diff --check` would test nothing.
+          # A trailing blank line at end of file is tolerated; trailing spaces and
+          # space-before-tab are not.
+          git -c core.whitespace=-blank-at-eof diff --check "$(git hash-object -t tree /dev/null)" HEAD -- . ':!*.png' ':!*.gif'
+          find src web test tools demo -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n 1 node --check
+          find deploy tools -name '*.sh' -print0 | xargs -0 -n 1 bash -n
+          bash -n better-bots.sh
+          bash -n install.sh
+          git ls-files -z '*.py' | PYTHONDONTWRITEBYTECODE=1 xargs -0 python3 -c 'import sys, py_compile; [py_compile.compile(f, doraise=True) for f in sys.argv[1:]]'
+      - name: Linux installer and app window tests
+        run: |
+          python3 test/linux-installer.test.py
+          python3 test/linux-window.test.py
+      - run: npm test
+      - name: Offline walkthrough
+        run: npm run demo
+
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Export the Linux release and verify it ships only the harness
+        run: |
+          python3 -c "import importlib.util as u; s = u.spec_from_file_location('release', 'tools/build-linux-release.py'); m = u.module_from_spec(s); s.loader.exec_module(m); m.export(archives=False)"
+          cd artifacts/linux-release/better-bots-mint-22-alpha
+          npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+          node verify-release.mjs

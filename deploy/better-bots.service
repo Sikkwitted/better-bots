@@ -1,0 +1,61 @@
+# better-bots as a service. Install:
+#
+#   sudo cp deploy/better-bots.service /etc/systemd/system/
+#   sudo systemctl enable --now better-bots
+#   journalctl -u better-bots -f
+#
+# Secrets live in /var/lib/better-bots/better-bots.env (chmod 600, owned by the
+# service user), never in this file — systemd unit files are world-readable.
+
+[Unit]
+Description=Better Bots — agent host
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=better-bots
+Group=better-bots
+WorkingDirectory=/opt/better-bots
+ExecStart=/usr/bin/node src/server.js
+
+# ANTHROPIC_API_KEY and BETTER_BOTS_TOKEN belong here. It lives in the state dir
+# because ProtectSystem=strict makes /etc read-only to this service, and the
+# console writes this file when you save a provider key.
+EnvironmentFile=-/var/lib/better-bots/better-bots.env
+Environment=BETTER_BOTS_DIR=/var/lib/better-bots
+Environment=BETTER_BOTS_HOST=127.0.0.1
+Environment=BETTER_BOTS_PORT=4173
+# Require a working memory engine (SQLite counts), not only the local fallback.
+Environment=BETTER_BOTS_REQUIRE_HINDSIGHT=1
+# Plugins that run here (uvx, npx) are found on this PATH; HOME is the data dir.
+Environment=HOME=/var/lib/better-bots
+Environment=PATH=/var/lib/better-bots/.local/bin:/usr/local/bin:/usr/bin:/bin
+
+# The store is durable and the host re-arms queued work on boot, so restarting
+# is safe: recover() requeues orphaned runs and re-arms undelivered wakes.
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictSUIDSGID=yes
+ReadWritePaths=/var/lib/better-bots
+LockPersonality=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+ProtectClock=yes
+ProtectKernelModules=yes
+# Files the service creates (keys, transcripts, memory) are private to it.
+UMask=0077
+# Not ProtectKernelTunables / ProtectControlGroups / ProtectKernelLogs /
+# ProtectHostname: each masks part of /proc, and the kernel then refuses to let
+# the agent shell's bubblewrap namespace mount its own procfs (checked on
+# Linux Mint 22). They guard root-writable paths; this service is not root.
+
+[Install]
+WantedBy=multi-user.target

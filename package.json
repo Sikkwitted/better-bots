@@ -1,0 +1,28 @@
+{
+  "name": "better-bots",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "Better Bots: a multi-agent host with persistent agents, bounded rooms, scoped memory, computer tools, and auditable permissions.",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/sdk": "^0.72.0"
+  },
+  "scripts": {
+    "test": "node --test 'test/*.test.js'",
+    "demo": "node demo/end-to-end.js",
+    "gui": "node src/server.js",
+    "cli": "node src/cli.js",
+    "test:browser": "node tools/test-browser.mjs"
+  },
+  "dependencies": {
+    "@novnc/novnc": "1.7.0",
+    "ws": "8.21.3"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

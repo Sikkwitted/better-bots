@@ -1,0 +1,5 @@
+# Security reports go through GitHub private vulnerability reporting, never public
+# issues. With SECURITY.md present and private reporting enabled, GitHub adds a
+# "Report a security vulnerability" entry to the issue chooser automatically.
+# Questions belong in Discussions.
+blank_issues_enabled: false

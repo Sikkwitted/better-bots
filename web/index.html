@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Better Bots</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%236d28d9'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23ece9f5'/%3E%3C/svg%3E">
+<script src="/theme-boot.js"></script>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- The roster: identity, lane, inbox, screen -->
+  <aside class="rail rail-left">
+    <button class="rail-toggle" data-rail="left" title="Collapse the roster" aria-label="Collapse the roster">‹‹</button>
+    <div class="brand"><strong>Better Bots</strong><small id="brand-version"></small><button id="open-app-settings" class="ghost" title="Plugins, AI providers and API keys, permissions">⚙ App settings</button></div>
+    <header class="rail-head" id="pinned-head" hidden><h1>Pinned</h1></header>
+    <ul id="pinned-list" class="list" hidden></ul>
+    <header class="rail-head">
+      <h1>Bots</h1>
+      <span class="row">
+        <button id="manage-workflows" type="button" class="ghost">Desks</button>
+        <button id="all-jobs" type="button" class="ghost" aria-controls="jobs-panel" aria-expanded="false">All routines</button>
+        <button id="new-agent" class="ghost" aria-expanded="false">+ Add</button>
+      </span>
+    </header>
+
+    <form id="agent-form" class="panel" hidden>
+      <label>Name<input name="name" required autocomplete="off" placeholder="Ada"></label>
+      <label>Role<input name="role" autocomplete="off" placeholder="researcher"></label>
+      <label>Desk<input name="desk" list="desk-names" autocomplete="off" placeholder="which roster section (blank = General)"></label>
+      <label>Prompt<textarea name="prompt" rows="3" placeholder="How this bot should think and behave."></textarea></label>
+      <div class="model-field">
+        <div class="model-field-head">
+          <label for="create-model">Model</label>
+          <button type="button" id="create-model-refresh" class="ghost" aria-controls="create-model" disabled>Refresh models</button>
+        </div>
+        <select name="model" id="create-model" aria-describedby="create-model-status"><option value="">Host default</option></select>
+        <p id="create-model-status" class="hint model-status" role="status" aria-live="polite" aria-atomic="true">Models load after unlocking.</p>
+      </div>
+      <fieldset id="create-tools" class="members"><legend>Tools</legend>
+        <label><input type="checkbox" name="tools_all" id="create-tools-all" value="1"> Every tool, including ones added later</label>
+        <div id="create-tools-list" class="members"></div>
+        <p class="hint">Tools that reach this machine outside the sandbox start off. Remember and Recall are always on.</p>
+      </fieldset>
+      <fieldset class="avatar-picker" id="create-avatar"><legend>Avatar</legend></fieldset>
+      <div class="row">
+        <button type="submit" class="primary">Create</button>
+        <button type="button" class="ghost" data-cancel>Cancel</button>
+      </div>
+    </form>
+
+    <ul id="agent-list" class="list"></ul>
+
+  </aside>
+
+  <!-- The conversation -->
+  <main class="chat">
+    <header class="chat-head">
+      <div id="chat-title"><span class="dot" style="--c:#3f3a52"></span><div><strong>No bot selected</strong><small>Create one to begin</small></div></div>
+      <div class="head-right">
+        <div id="chat-meta" class="meta"></div>
+        <button id="theme-toggle" class="ghost icon" title="Theme" aria-label="Theme"></button>
+        <button id="open-jobs" type="button" class="ghost" aria-controls="jobs-panel" aria-expanded="false" disabled>Routines</button>
+        <button id="open-memory" class="ghost" aria-expanded="false" disabled>Memory</button>
+        <button id="open-settings" class="ghost" aria-expanded="false" disabled>Settings</button>
+      </div>
+    </header>
+
+    <div id="provider-notice" class="provider-notice" role="status" hidden>
+      <span>Replies are a scripted stand-in until you connect an AI provider.</span>
+      <button type="button" id="connect-provider" class="primary">Connect a provider</button>
+    </div>
+
+    <form id="settings-form" class="panel settings" hidden>
+      <div class="row"><button type="button" id="edit-lead" class="ghost">Make lead</button><span id="edit-lead-note" class="hint"></span></div>
+      <div class="settings-grid">
+        <label>Name<input name="name" required autocomplete="off"></label>
+        <label>Role<input name="role" autocomplete="off"></label>
+        <label>Desk<input name="desk" list="desk-names" autocomplete="off" placeholder="blank = General"></label>
+      </div>
+      <datalist id="desk-names"></datalist>
+      <label>Prompt<textarea name="prompt" rows="4" placeholder="How this bot should think and behave."></textarea></label>
+      <p class="hint"><a href="/prompt-builder.html" target="_blank" rel="noopener">Write one for me →</a></p>
+      <div class="model-field">
+        <div class="model-field-head">
+          <label for="edit-model">Model</label>
+          <button type="button" id="edit-model-refresh" class="ghost" aria-controls="edit-model" disabled>Refresh models</button>
+        </div>
+        <select name="model" id="edit-model" aria-describedby="edit-model-status"><option value="">Host default</option></select>
+        <p id="edit-model-status" class="hint model-status" role="status" aria-live="polite" aria-atomic="true">Models load after unlocking.</p>
+        <label for="edit-reasoning">Reasoning level</label>
+        <select name="reasoning_effort" id="edit-reasoning"><option value="">Default</option></select>
+        <p id="edit-reasoning-note" class="hint"></p>
+      </div>
+      <fieldset id="edit-tools" class="members"><legend>Tools</legend>
+        <label><input type="checkbox" name="tools_all" id="edit-tools-all" value="1"> Every tool, including ones added later</label>
+        <div id="edit-tools-list" class="members"></div>
+        <p class="hint">Remember and Recall are always on.</p>
+      </fieldset>
+      <fieldset class="avatar-picker" id="edit-avatar"><legend>Avatar</legend></fieldset>
+      <p id="settings-change-note" class="hint settings-change-note" role="status" aria-live="polite">Changes take effect after Save.</p>
+      <div class="row">
+        <button type="submit" class="primary">Save</button>
+        <button type="button" class="ghost" data-cancel>Cancel</button>
+      </div>
+    </form>
+
+    <!-- What this agent knows: settled knowledge, search, and a way to put it right -->
+    <section id="memory-panel" class="panel memory" hidden aria-label="Memory">
+      <div class="memory-head">
+        <strong>What <span id="memory-name">this bot</span> knows</strong>
+        <small id="memory-counts"></small>
+        <button type="button" class="ghost" data-cancel>Close</button>
+      </div>
+      <label id="memory-agent-row" class="memory-agent-row" hidden><span id="memory-desk-name"></span><select id="memory-agent" aria-label="Bot whose memory to view"></select></label>
+      <div id="memory-standing" class="memory-standing"></div>
+      <form id="memory-search" class="memory-row">
+        <input name="q" autocomplete="off" placeholder="Search its memory — a question or a phrase">
+        <button type="submit" class="ghost">Recall</button>
+      </form>
+      <ul id="memory-results" class="memory-list"></ul>
+      <form id="memory-correct" class="memory-row">
+        <input name="text" autocomplete="off" placeholder="Something it has wrong? State the correct fact.">
+        <select name="scope" aria-label="Where it applies"><option value="project">about the project</option><option value="user">about you</option></select>
+        <button type="submit" class="primary">Correct</button>
+      </form>
+    </section>
+
+    <!-- App-managed scheduled prompts, not OS cron. One view, two entry points. -->
+    <section id="jobs-panel" class="jobs-panel" hidden aria-labelledby="jobs-heading">
+      <div class="jobs-toolbar">
+        <h2 id="jobs-heading" class="jobs-heading">Routines</h2>
+        <div class="row">
+          <button id="jobs-new" type="button" class="primary" aria-controls="jobs-form" aria-expanded="false">New routine</button>
+          <button id="jobs-refresh" type="button" class="ghost">Refresh</button>
+          <button id="jobs-close" type="button" class="ghost">Close</button>
+        </div>
+      </div>
+      <p class="jobs-note">App-managed scheduled bot prompts — not OS cron. The host must be running to dispatch them. Viewing routines never runs them.</p>
+      <p id="jobs-status" class="jobs-note" role="status" aria-live="polite"></p>
+      <p id="jobs-error" class="jobs-error" role="alert" hidden></p>
+      <form id="jobs-form" class="jobs-form" hidden>
+        <h3>New scheduled prompt</h3>
+        <div class="jobs-form-grid">
+          <label class="jobs-field" for="job-agent_id">Bot<select id="job-agent_id" name="agent_id" required></select></label>
+          <label class="jobs-field" for="job-name">Name<input id="job-name" name="name" required autocomplete="off" placeholder="Morning check-in"></label>
+        </div>
+        <label class="jobs-field" for="job-text">Prompt<textarea id="job-text" name="text" rows="3" required placeholder="What should this bot do?"></textarea></label>
+        <label class="jobs-field" for="job-schedule">Schedule<select id="job-schedule" name="schedule">
+          <option value="once">Once</option><option value="interval">Interval</option><option value="cron">Cron (five fields)</option>
+        </select></label>
+        <div id="jobs-once-fields" class="jobs-schedule-fields">
+          <label class="jobs-field" for="job-due_at">First run (UTC)<input id="job-due_at" name="due_at" type="datetime-local" required aria-describedby="job-start-note"></label>
+          <p id="job-start-note" class="jobs-note">Choose an explicit future date and time in UTC. Intervals repeat from this start; they do not follow daylight saving time.</p>
+        </div>
+        <div id="jobs-interval-fields" class="jobs-schedule-fields" hidden>
+          <label class="jobs-field" for="job-minutes">Every (minutes)<input id="job-minutes" name="minutes" type="number" min="1" step="any" value="60" disabled required></label>
+        </div>
+        <div id="jobs-cron-fields" class="jobs-schedule-fields" hidden>
+          <div class="jobs-form-grid">
+            <label class="jobs-field" for="job-cron">Cron expression<input id="job-cron" name="cron" placeholder="0 7 * * 1-5" autocomplete="off" disabled required aria-describedby="job-cron-note"></label>
+            <label class="jobs-field" for="job-timezone">Time zone<input id="job-timezone" name="timezone" value="UTC" placeholder="America/Chicago" autocomplete="off" disabled required></label>
+          </div>
+          <p id="job-cron-note" class="jobs-note">Minute · hour · day of month · month · day of week. Named time zones follow daylight saving time; the next matching minute may be soon.</p>
+        </div>
+        <label class="jobs-consent" for="job-consent"><input id="job-consent" name="consent" type="checkbox" required> I authorize automatic bot work on this schedule, including potentially paid model and tool usage.</label>
+        <p id="jobs-form-error" class="jobs-error" role="alert" hidden></p>
+        <div class="jobs-form-actions">
+          <button id="jobs-save" type="submit" class="primary">Create routine</button>
+          <button id="jobs-cancel" type="button" class="ghost">Cancel</button>
+        </div>
+      </form>
+      <div id="jobs-list" class="jobs-list" aria-label="Routines"></div>
+      <p class="jobs-note">Dispatch count means queued runs, not successful completions. Removing a routine stops future scheduling; already queued or active runs are unaffected.</p>
+    </section>
+
+    <div id="transcript" class="transcript">
+      <div id="transcript-content" class="transcript-content">
+        <div class="empty">
+          <h2 id="empty-title">Loading Better Bots…</h2>
+          <p id="empty-description">Connecting to your bots.</p>
+          <button id="empty-create-agent" type="button" class="primary" hidden>Create your first bot</button>
+        </div>
+      </div>
+      <div id="thoughts" class="thoughts" hidden aria-live="polite"></div>
+    </div>
+
+    <form id="composer" class="composer">
+      <button type="button" id="jump-latest" class="jump-latest" hidden>↓ Jump to latest</button>
+      <div class="composer-modes">
+        <label><input type="radio" name="mode" value="user" checked> As the user</label>
+        <label><input type="radio" name="mode" value="peer"> As a teammate</label>
+        <div class="quick-reasoning"><label for="quick-reasoning">Reasoning</label><select id="quick-reasoning" aria-describedby="quick-reasoning-note"></select><span id="quick-reasoning-note" class="sr-only"></span></div>
+        <select id="peer-from" hidden aria-label="Sender"></select>
+        <select id="peer-priority" hidden aria-label="Priority">
+          <option value="">normal</option>
+          <option value="stop">priority: stop</option>
+          <option value="supersede">priority: supersede</option>
+          <option value="safety">priority: safety</option>
+          <option value="time_critical">priority: time-critical</option>
+        </select>
+      </div>
+      <div id="attachment-previews" class="attachment-previews" hidden aria-live="polite"></div>
+      <div class="composer-row">
+        <input id="image-picker" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+        <button id="attach-images" type="button" class="ghost attach-images" aria-label="Attach images" title="Attach up to four images">＋</button>
+        <textarea id="input" rows="1" placeholder="Ask the bot to do something…" disabled></textarea>
+        <button id="stop-agent" type="button" class="stop-agent" disabled>■ Stop</button>
+        <button type="submit" class="primary" disabled>Send</button>
+      </div>
+      <p id="lane-note" class="hint"></p>
+    </form>
+  </main>
+
+  <!-- What the host recorded, and what it needs from you -->
+  <aside class="rail rail-right">
+    <button class="rail-toggle" data-rail="right" title="Collapse this panel" aria-label="Collapse this panel">››</button>
+
+    <!-- Pinned above everything else so a long group list never pushes it away. -->
+    <section id="desktop-viewer" class="desktop-viewer">
+      <h2>Bot desktop</h2><div id="desktop-screen"></div>
+      <p id="desktop-status" class="hint">Select a bot to watch its desktop.</p>
+      <div class="row"><button id="desktop-enlarge" class="ghost" disabled>Full screen</button><button id="desktop-control" class="ghost" disabled>Take over</button><button id="desktop-retry" class="ghost" hidden>Reconnect</button></div>
+    </section>
+
+    <div class="rail-scroll">
+    <header class="rail-head"><h1>Approvals<span id="approvals-count" class="count-badge" hidden></span></h1></header>
+    <div id="approvals" class="approvals"><p class="hint">Nothing is waiting on you.</p></div>
+    <header class="rail-head">
+      <h1>Rooms</h1>
+      <button id="new-room" class="ghost" aria-expanded="false">+ Room</button>
+    </header>
+    <form id="room-form" class="panel" hidden>
+      <label>Name / purpose<input name="purpose" required autocomplete="off" placeholder="Launch review"></label>
+      <fieldset id="room-members" class="members"><legend>Members (at least one)</legend></fieldset>
+      <label>Room memory
+        <select name="memory" aria-label="Room memory">
+          <option value="members" selected>On — room members only</option>
+          <option value="room">On — this room only</option>
+          <option value="none">Off — fresh start each request</option>
+        </select>
+      </label>
+      <p class="hint">On gives members recent room turns and saves the outcome only to their memory. This room only gives the same room turns but saves nothing to any bot's desk memory. Off starts each new request fresh. The transcript stays visible; changing this does not erase past memories.</p>
+      <div class="row">
+        <button type="submit" class="primary">Create room</button>
+        <button type="button" class="ghost" data-cancel>Cancel</button>
+      </div>
+      <p class="hint">Talk to the room from the chat. Every message runs one bounded round: 3 rounds, 10 messages, 2 per member turn.</p>
+    </form>
+    <ul id="room-list" class="list"></ul>
+    </div>
+
+  </aside>
+
+  <!-- Narrow screens show one pane at a time; this picks which. -->
+  <nav class="tabs" aria-label="Panes">
+    <button type="button" data-pane="agents">Bots</button>
+    <button type="button" data-pane="chat">Chat</button>
+    <button type="button" data-pane="activity">Rooms<span id="tab-badge" class="tab-badge" hidden></span></button>
+  </nav>
+
+</div>
+<form id="token-form" class="gate" hidden>
+  <h2>This console is locked</h2>
+  <p>Paste the login link from the terminal, or the token in &lt;data dir&gt;/console-token.</p>
+  <input name="token" type="password" autocomplete="current-password" placeholder="Token" required>
+  <button type="submit" class="primary">Unlock</button>
+</form>
+<div id="banner" class="banner" role="status" aria-live="polite" hidden></div>
+<script type="module" src="/app.js"></script>
+<dialog id="desktop-dialog" aria-label="Bot desktop"><button type="button" class="ghost">Close full screen</button></dialog>
+<dialog id="app-settings" aria-labelledby="app-settings-title">
+  <header class="app-settings-header"><div><h1 id="app-settings-title">App settings</h1><p class="hint">Manage the services and preferences shared by your bots.</p></div><button id="close-app-settings" class="ghost" aria-label="Close app settings">Close</button></header>
+  <div class="app-settings-layout">
+    <nav class="settings-nav" aria-label="Settings sections">
+      <button type="button" data-settings-page="plugins" aria-current="page">Plugins</button>
+      <button type="button" data-settings-page="providers">AI providers</button>
+      <button type="button" data-settings-page="permissions">Permissions</button>
+      <button type="button" data-settings-page="activity">Activity</button>
+    </nav>
+    <div class="settings-content">
+      <section data-settings-section="plugins"><h2>Plugins</h2><p class="hint">Connect services to give your bots more capabilities.</p><label class="plugin-search-label" for="plugin-search">Find a plugin<input id="plugin-search" type="search" placeholder="Search by name or capability…" autocomplete="off"></label><button id="toggle-plugins" hidden aria-expanded="true">Connect</button><div id="plugins" class="providers"></div></section>
+      <section data-settings-section="providers" hidden><h2>AI providers</h2><p class="hint">Manage accounts and keys, then choose a model in each bot’s settings.</p><button id="toggle-providers" hidden aria-expanded="true">Keys</button><div id="providers" class="providers"></div></section>
+      <section data-settings-section="permissions" hidden aria-labelledby="settings-permissions-heading"><h2 id="settings-permissions-heading">Permissions</h2><p class="hint">Choose when your bots should ask first. Changes save immediately and apply to all bots.</p><div id="permissions" class="approvals"><p class="hint">Loading…</p></div></section>
+      <section data-settings-section="activity" hidden><div class="settings-section-heading"><h2>Activity</h2><span class="row"><button id="toggle-activity" class="ghost" aria-expanded="true" title="Collapse the feed">▾</button><button id="clear-activity" class="ghost">Clear</button></span></div><p class="hint">Recent events from across your bots.</p><ul id="activity" class="activity"></ul></section>
+    </div>
+  </div>
+  <footer class="app-settings-footer"><button type="button" id="close-app-settings-footer" class="ghost">Close settings</button></footer>
+</dialog>
+<dialog id="workflow-manager" aria-label="Manage desks"></dialog>
+<dialog id="explain-dialog" aria-label="Run details"></dialog>
+</body>
+</html>

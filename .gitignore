@@ -1,0 +1,20 @@
+node_modules/
+.data/
+demo-data/
+.opencode/
+artifacts/
+.video_agent/
+.env
+.env.*
+!.env.example
+*.dump
+*.pem
+*.key
+.DS_Store
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Personal agent notes. Shared agent instructions live in AGENTS.md.
+/CLAUDE.md

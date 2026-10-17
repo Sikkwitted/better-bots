@@ -1,0 +1,67 @@
+name: Bug report
+description: Something in Better Bots does not work as described.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not post API keys, tokens, cookies, transcripts, or private data.
+        Report security problems privately (see SECURITY.md), not here.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `npm run gui`
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Better Bots version or commit
+      placeholder: 0.1.0, or the output of `git rev-parse --short HEAD`
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Linux (from source)
+        - Linux Mint / Ubuntu installer or package
+        - macOS
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      placeholder: output of `node --version`
+  - type: input
+    id: provider
+    attributes:
+      label: Model provider, if relevant
+      placeholder: e.g. Anthropic API key, OpenRouter, Ollama
+  - type: dropdown
+    id: memory
+    attributes:
+      label: Memory engine
+      options:
+        - SQLite (default)
+        - Hindsight
+        - Not sure
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Remove secrets and private content first.
+      render: text
