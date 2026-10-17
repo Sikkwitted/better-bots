@@ -98,6 +98,9 @@ try {
     await page.waitForTimeout(350); // refresh between pointer-down and pointer-up
     await page.mouse.up();
     await page.waitForFunction(({mode})=>document.querySelector('#permissions .card[data-zone=external] button[aria-pressed="true"]')?.dataset.mode===mode,{mode});
+    // The button shows the choice at once and saves in the background; wait for the
+    // save itself. A click lost to the refresh would never save, and still fails here.
+    for (const until=Date.now()+5000; host.permissions.standingMode('external')!==mode && Date.now()<until;) await page.waitForTimeout(25);
     assert.equal(host.permissions.standingMode('external'),mode,'the click actually persisted');
   }
   // An old state response must not undo a choice saved while that read was in flight.
@@ -109,6 +112,7 @@ try {
   await page.waitForFunction(()=>document.querySelector('#permissions .card[data-zone=external] button[aria-pressed="true"]')?.dataset.mode==='always');
   releaseState(); await page.waitForTimeout(300);
   assert.equal(await external.locator('button[aria-pressed="true"]').getAttribute('data-mode'),'always','late state must not unselect saved choice');
+  for (const until=Date.now()+5000; host.permissions.standingMode('external')!=='always' && Date.now()<until;) await page.waitForTimeout(25);
   await page.reload(); await page.locator('#open-app-settings').click(); await page.locator('[data-settings-page=permissions]').click();
   assert.equal(await page.locator('#permissions .card[data-zone=external]').locator('button[aria-pressed="true"]').getAttribute('data-mode'),'always');
   await page.locator('#close-app-settings').click();
