@@ -126,7 +126,7 @@ test('the user can see what happened and why', async () => {
 
   const status = host.status();
   assert.equal(status.agents[0].name, 'Ada');
-  assert.equal(status.standing_permissions.local, 'ask');
+  assert.equal(status.standing_permissions.local, 'always', 'bots work without asking by default');
   assert.match(status.computer.warning, /not imply a private file system/);
   assert.throws(() => host.explain('run_nope'), /unknown run/);
 });
@@ -135,6 +135,7 @@ test('explain joins exact approval requests, including legacy resolutions, and s
   const { host } = makeHost({ script: () => [call('ApprovalFixture', {})] });
   host.registry.create({ id: 'agt_a', profile: { name: 'Ada' } });
   host.approval_mode = 'wait';
+  host.permissions.setStandingMode('local', 'ask'); // cards appear only where the person chose Ask
   let fail = false, resolution = 'allow_once', legacy = false, effects = 0;
   host.tools.register({ name: 'ApprovalFixture', description: 'Local test fixture', side_effect: 'fixture only',
     input_schema: { type: 'object' }, permission: { action: 'local.write_file', target: () => '/fixture/same-target' },

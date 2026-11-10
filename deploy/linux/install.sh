@@ -29,6 +29,33 @@ parse_args() {
   }
 }
 
+# Bots work without asking. Say so, and install only after a typed yes.
+# BETTER_BOTS_ACCEPT_AUTONOMY=yes answers for an unattended install.
+confirm_autonomy() {
+  cat <<'EOF'
+
+  Better Bots bots work on their own.
+
+  Give a bot a task and it keeps working until the task is done. It uses the
+  tools on the computer Better Bots is installed on without asking you first.
+  If that's this computer, that means your files, your apps and your accounts:
+  bots can read and change files, run commands, use the internet, and send,
+  post, delete, pay and change passwords with the accounts you connect.
+
+  Install it only on a computer you're comfortable letting bots use, and keep
+  backups. To make bots ask first, open App settings > Permissions and choose Ask.
+
+EOF
+  [ "${BETTER_BOTS_ACCEPT_AUTONOMY:-}" != yes ] || return 0
+  if ! { : < /dev/tty; } 2>/dev/null; then
+    echo 'There is no terminal to answer on. To install anyway, run with BETTER_BOTS_ACCEPT_AUTONOMY=yes.' >&2
+    return 1
+  fi
+  local answer
+  read -r -p '  Type yes to install: ' answer < /dev/tty
+  [ "$answer" = yes ] || { echo 'Not installed.' >&2; return 1; }
+}
+
 # NodeSource's Node 22 replaces the distribution's nodejs, and apt then removes
 # Ubuntu's npm with every package that depends on it (eslint, webpack and the
 # like). Say so before anything changes rather than in the middle of apt output.
@@ -142,9 +169,10 @@ if [ "$CHECK_ONLY" = 1 ]; then
   echo 'Platform and package checks passed. Nothing installed.'
   exit 0
 fi
+confirm_autonomy || exit 1
 if [ "$(id -u)" -ne 0 ]; then
   echo 'Installing Better Bots requires administrator access.'
-  exec sudo bash "$ROOT/install.sh" "$@"
+  exec sudo env BETTER_BOTS_ACCEPT_AUTONOMY=yes bash "$ROOT/install.sh" "$@"
 fi
 umask 077
 export DEBIAN_FRONTEND=noninteractive

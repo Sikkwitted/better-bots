@@ -1,39 +1,51 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeHost, say, call } from './helpers.js';
-import { APPROVAL_TTL_MS } from '../src/services/permission-service.js';
+import { makeHost, reopenHost, say, call } from './helpers.js';
+import { ACTION_POLICY, APPROVAL_TTL_MS, ZONES } from '../src/services/permission-service.js';
 
 // Allow once, Always, Deny, and Never each behave correctly.
 
 function setup() {
   const made = makeHost({ script: () => [say('ok')] });
   made.host.registry.create({ id: 'agt_a', profile: { name: 'Ada' } });
+  // The approval tests below exercise a zone the user switched to Ask.
+  made.host.permissions.setStandingMode('local', 'ask', { actor: 'user' });
   return made;
 }
 
-test('the default standing mode for the user machine is ask', () => {
-  const { host } = setup();
-  assert.equal(host.permissions.standingMode('local'), 'ask');
-  const decision = host.permissions.authorize({
-    agent_id: 'agt_a', action: 'local.read_file', target: '/tmp/x', scope_id: 's1',
-  });
-  assert.equal(decision.decision, 'ask');
+test('bots work without asking by default: every zone starts at Always', () => {
+  const { host } = makeHost();
+  for (const zone of ZONES) assert.equal(host.permissions.standingMode(zone), 'always', zone);
+  for (const [action, policy] of Object.entries(ACTION_POLICY)) {
+    const decision = host.permissions.authorize({ agent_id: 'agt_a', action, target: 'exact', scope_id: 's1' });
+    if (policy.default === 'user_only') assert.equal(decision.decision, 'blocked', action);
+    else assert.deepEqual([decision.decision, decision.basis], ['allowed', 'default_allow'], action);
+  }
+  assert.equal(host.permissions.pendingRequests().length, 0, 'nothing waits on a card');
 });
 
-test('sandbox commands run by default on Linux and ask by default on macOS until the user says Always', () => {
-  const ask = (host) => host.permissions.authorize({ agent_id: 'agt_a', action: 'sandbox.run_command', target: 'ls', scope_id: 's1' });
-  const linux = makeHost({ platform: 'linux' }).host;
-  assert.equal(linux.permissions.standingMode('sandbox'), 'always');
-  assert.equal(ask(linux).decision, 'allowed');
+test('upgrading switches zones nobody chose to Always and keeps every zone the user chose', () => {
+  const { host, dir } = makeHost();
+  host.permissions.setStandingMode('external', 'ask', { actor: 'user' });
+  // A state file from the ask-first release: unchosen zones were stored as ask.
+  host.permissions.doc.update((s) => { s.standing.local = 'ask'; s.standing.sandbox = 'ask'; return s; });
+  const reopened = reopenHost({ dir }).host.permissions;
+  assert.equal(reopened.standingMode('local'), 'always');
+  assert.equal(reopened.standingMode('sandbox'), 'always');
+  assert.equal(reopened.standingMode('external'), 'ask', 'a choice the user made is kept');
+  assert.equal(reopened.authorize({ agent_id: 'agt_a', action: 'external.pay', target: 'invoice-42', scope_id: 's1' }).decision, 'ask');
+});
 
-  const { host: mac, dir } = makeHost({ platform: 'darwin' });
-  assert.equal(mac.permissions.standingMode('sandbox'), 'ask', 'Settings shows what applies');
-  const request = ask(mac);
-  assert.equal(request.decision, 'ask');
-  assert.equal(mac.permissions.resolve(request.request.id, 'always').ok, true);
-  assert.equal(ask(mac).decision, 'allowed');
-  // The choice is the user's now, and reopening on the same Mac keeps it.
-  assert.equal(makeHost({ dir, platform: 'darwin' }).host.permissions.standingMode('sandbox'), 'always');
+test('the first-open notice is accepted once, by the user, and survives a restart', () => {
+  const { host, dir } = makeHost();
+  assert.equal(host.status().autonomy_acknowledged, false);
+  assert.throws(() => host.permissions.acknowledgeAutonomy({ actor: 'agent' }), /only the user/);
+  assert.equal(host.status().autonomy_acknowledged, false);
+  const at = host.permissions.acknowledgeAutonomy({ actor: 'user' });
+  assert.ok(at);
+  assert.equal(host.permissions.acknowledgeAutonomy({ actor: 'user' }), at, 'accepting again keeps the first time');
+  assert.equal(host.audit.where((e) => e.type === 'permission.autonomy_acknowledged').length, 2);
+  assert.equal(reopenHost({ dir }).host.status().autonomy_acknowledged, true);
 });
 
 test('Allow once is scoped to agent, action, target, and scope', () => {
@@ -133,8 +145,10 @@ test('destructive and external actions each have their own policy and need an ex
     const vague = host.permissions.authorize({ agent_id: 'agt_a', action, target: '', scope_id: 's1' });
     assert.equal(vague.basis, 'exact_target_required', `${action} must name its target`);
     const exact = host.permissions.authorize({ agent_id: 'agt_a', action, target: 'invoice-42', scope_id: 's1' });
-    assert.equal(exact.decision, 'ask');
+    assert.equal(exact.decision, 'allowed', `${action} runs without asking by default`);
   }
+  host.permissions.setStandingMode('external', 'ask', { actor: 'user' });
+  assert.equal(host.permissions.authorize({ agent_id: 'agt_a', action: 'external.pay', target: 'invoice-42', scope_id: 's1' }).decision, 'ask');
   assert.equal(host.permissions.policyFor('external.pay').high_risk, true);
 });
 

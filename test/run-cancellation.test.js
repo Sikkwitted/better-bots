@@ -103,6 +103,7 @@ for (const success of [true, false]) {
 test('cancellation while approval is pending cannot dispatch the action', async () => {
   const { host } = setup(() => [call('LocalWriteFile', { path: '/tmp/forbidden-cancel-probe', content: 'no' })]);
   host.approval_mode = 'wait';
+  host.permissions.setStandingMode('local', 'ask'); // cards appear only where the person chose Ask
   const entered = makeGate();
   const authorize = host.permissions.authorize.bind(host.permissions);
   host.permissions.authorize = (args) => { const r = authorize(args); if (r.decision === 'ask') entered.release(); return r; };

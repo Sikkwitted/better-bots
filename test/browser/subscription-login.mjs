@@ -14,6 +14,7 @@ const login={
  cancel:()=>session={state:'cancelled',message:'Sign-in cancelled. Your previous connection was kept.'},close(){}
 };
 const catalog={codexAuth:{status:()=>({signed_in:signedIn,needs_reconnect:!signedIn,plan:'pro'})},list:async()=>({models:signedIn?[{id:'fixture-model',provider:'codex'}]:[],providers:[]}),invalidate(){}};
+host.permissions.acknowledgeAutonomy(); // the first-open notice has been accepted
 const server=createServer({host,live:false,catalog,subscriptionLogin:login});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const browser=await chromium.launch({headless:true});
 try{

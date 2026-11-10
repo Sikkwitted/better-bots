@@ -6,6 +6,7 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 const { host, dir } = makeHost({script:()=>[say('New answer on latest page.')]});
 host.registry.create({ id:'editor', profile:{name:'Editor'} });
 for (let i=0;i<180;i++) host.transcripts.append('agent','editor',{kind:'user_message',text:`History message ${i}.`});
+host.permissions.acknowledgeAutonomy(); // the first-open notice has been accepted
 const server = createServer({host,live:false});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const browser = await chromium.launch({headless:true});

@@ -6,6 +6,7 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 // without the locked screen, and the token must not stay in the address bar.
 const {host} = makeHost({script:()=>[say('done')]});
 host.registry.create({id:'agt_ui',profile:{name:'Test bot'}});
+host.permissions.acknowledgeAutonomy(); // the first-open notice has been accepted
 const server=createServer({host,live:false,token:'link-secret',catalog:{list:async()=>({models:[],providers:[]}),invalidate(){}}});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const base=`http://127.0.0.1:${server.address().port}`;

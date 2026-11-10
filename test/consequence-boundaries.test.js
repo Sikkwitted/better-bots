@@ -12,7 +12,7 @@ test('real confined shell cannot connect to localhost',async(t)=>{
 test('Linux shell always creates a separate network namespace',()=>{
  const {dir}=makeHost();const own=path.join(dir,'agents/agt_a');fs.mkdirSync(own,{recursive:true});assert.ok(bwrapArgs({workspace:dir,agentId:'agt_a',cwd:own,env:{}}).includes('--unshare-net'));
 });
-for(const action of ['click','type','key','open_url','move'])test(`screen ${action} asks by default and runs under explicit external Always`,async()=>{
+for(const action of ['click','type','key','open_url','move'])test(`screen ${action} runs by default and asks when external is set to Ask`,async()=>{
  const run=async(mode)=>{
   const {host}=makeHost({script:()=>[call('UseScreen',{window_index:0,owner_token:'token',action,detail:{text:'send',url:'https://example.com'}})]});
   host.registry.create({id:'agt_a',profile:{name:'A'}});if(mode)host.permissions.setStandingMode('external',mode);
@@ -20,9 +20,10 @@ for(const action of ['click','type','key','open_url','move'])test(`screen ${acti
   host.userRequest({agent_id:'agt_a',text:'test'});await host.drain();
   return {performed,asked:host.audit.where(e=>e.type==='permission.asked'&&e.action==='external.browser').length};
  };
- assert.deepEqual(await run(null),{performed:0,asked:1});
- // A bot that needs an OK for every click cannot use its computer; the person's Always is that OK.
+ assert.deepEqual(await run(null),{performed:1,asked:0});
  assert.deepEqual(await run('always'),{performed:1,asked:0});
+ // Ask is the person's choice to review every click.
+ assert.deepEqual(await run('ask'),{performed:0,asked:1});
 });
 test('unclassified calls enforce exact approvals, denials, expiry and ceilings',()=>{
  const {host,clock}=makeHost();const p=host.permissions;

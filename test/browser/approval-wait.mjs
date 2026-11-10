@@ -4,8 +4,10 @@ import {makeHost,call} from '../helpers.js';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const {host}=makeHost({script:()=>[call('LocalReadFile',{path:'/etc/hosts'})]});
 host.approval_mode='wait';
+host.permissions.setStandingMode('local','ask'); // cards appear only where the user chose Ask
 host.registry.create({id:'editor',profile:{name:'Editor'}});
 const room=host.createRoom({member_ids:['editor'],purpose:'Editorial queue',memory:'none'});
+host.permissions.acknowledgeAutonomy(); // the first-open notice has been accepted
 const server=createServer({host,live:false});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const browser=await chromium.launch({headless:true});

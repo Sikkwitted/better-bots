@@ -45,6 +45,28 @@ if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1 && ! launchctl print "$DO
   exit 1
 fi
 
+# Bots work without asking. Say so, and install only after a typed yes.
+# BETTER_BOTS_ACCEPT_AUTONOMY=yes answers for an unattended install.
+cat <<'EOF'
+
+  Better Bots bots work on their own.
+
+  Give a bot a task and it keeps working until the task is done. It uses the
+  tools on the computer Better Bots is installed on without asking you first.
+  If that's this computer, that means your files, your apps and your accounts:
+  bots can read and change files, run commands, use the internet, and send,
+  post, delete, pay and change passwords with the accounts you connect.
+
+  Install it only on a computer you're comfortable letting bots use, and keep
+  backups. To make bots ask first, open App settings > Permissions and choose Ask.
+
+EOF
+if [ "${BETTER_BOTS_ACCEPT_AUTONOMY:-}" != yes ]; then
+  { : < /dev/tty; } 2>/dev/null || { echo "There is no terminal to answer on. To install anyway, run with BETTER_BOTS_ACCEPT_AUTONOMY=yes." >&2; exit 1; }
+  read -r -p "  Type yes to install: " ANSWER < /dev/tty
+  [ "$ANSWER" = yes ] || { echo "Not installed." >&2; exit 1; }
+fi
+
 echo "==> Better Bots code -> $APP_DIR"
 mkdir -p "$APP_DIR" "$LOGS"
 mkdir -p -m 700 "$DATA_DIR"

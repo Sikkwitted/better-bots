@@ -535,6 +535,9 @@ export function createServer({ host, live, token = null,
       zone: body.zone,
       mode: host.permissions.setStandingMode(body.zone, body.mode, { actor: 'user' }),
     }),
+    'POST /api/permissions/acknowledge': () => ({
+      acknowledged_at: host.permissions.acknowledgeAutonomy({ actor: 'user' }),
+    }),
 
     'GET /api/explain': (_, url) => host.explain(url.searchParams.get('run_id')),
     'POST /api/runs/cancel': async (body) => {

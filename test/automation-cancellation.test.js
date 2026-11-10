@@ -182,6 +182,7 @@ test('active sandbox shell is killed and cannot execute its delayed follow-up', 
 test('cancellation while approval is awaited cannot start the tool', async () => {
   const { host, item } = setup(() => [call('LocalWriteFile', { path: '/tmp/never-write-gap4', content: 'forbidden' })]);
   host.approval_mode = 'wait';
+  host.permissions.setStandingMode('local', 'ask'); // cards appear only where the person chose Ask
   const authorize = host.permissions.authorize.bind(host.permissions);
   const entered = makeGate();
   host.permissions.authorize = (args) => { const result = authorize(args); if (result.decision === 'ask') entered.release(); return result; };

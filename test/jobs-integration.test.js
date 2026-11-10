@@ -10,7 +10,7 @@ function refreshHarness() {
   const snapshots = [];
   const state = { agents: [], rooms: [], approvals: [], automations: [], selectedKind: 'agent', selected: null };
   const jobs = { revision: 0, items: [], update(data, expected) { if (expected !== this.revision) return false; this.revision++; this.items = data.automations; snapshots.push(data); return true; } };
-  const context = vm.createContext({ withApprovalStatus, state, jobs, api: (...args) => { calls.push(args); return new Promise((resolve, reject) => { requests.push(resolve); failures.push(reject); }); }, $: () => ({}), clearTimeout() {}, setTimeout() {}, renderAgents() {}, renderRooms() {}, renderApprovals() {}, renderPermissions() {}, renderHead() {}, renderComposer() {} });
+  const context = vm.createContext({ withApprovalStatus, state, jobs, api: (...args) => { calls.push(args); return new Promise((resolve, reject) => { requests.push(resolve); failures.push(reject); }); }, $: () => ({}), clearTimeout() {}, setTimeout() {}, renderAgents() {}, renderRooms() {}, renderApprovals() {}, renderPermissions() {}, renderHead() {}, renderComposer() {}, showAutonomyNotice() {} });
   vm.runInContext(source.slice(source.indexOf('// ------------------------------------------------------------------- state ---'), source.indexOf('function agentById')), context);
   const data = (name) => ({ agents: [{ id: 'a', name }], rooms: [], pending_approvals: [], automations: [{ id: name }], live: false });
   return { requests, failures, calls, snapshots, state, jobs, data, context, refresh: () => vm.runInContext('refresh()', context) };

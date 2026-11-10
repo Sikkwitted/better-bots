@@ -33,16 +33,16 @@ export function isToolFollowUp(ctx) {
  * are Linux's on every machine, so the suite means the same thing on a Mac;
  * the macOS sandbox default has its own test.
  */
-export function makeHost({ dir = tmpDir(), script = () => [], clock = fixedClock(), window_count = 3, platform = 'linux' } = {}) {
+export function makeHost({ dir = tmpDir(), script = () => [], clock = fixedClock(), window_count = 3 } = {}) {
   const adapter = new ScriptedAdapter(oneStep(script));
-  const host = new Host({ dir, adapter, clock, window_count, platform });
+  const host = new Host({ dir, adapter, clock, window_count });
   return { host, adapter, clock, dir };
 }
 
 /** Reopen the same directory with a fresh process-equivalent host. */
-export function reopenHost({ dir, script = () => [], clock = fixedClock(), window_count = 3, platform = 'linux' }) {
+export function reopenHost({ dir, script = () => [], clock = fixedClock(), window_count = 3 }) {
   const adapter = new ScriptedAdapter(oneStep(script));
-  return { host: new Host({ dir, adapter, clock, window_count, platform }), adapter };
+  return { host: new Host({ dir, adapter, clock, window_count }), adapter };
 }
 
 export function makeGate() {

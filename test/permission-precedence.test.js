@@ -12,15 +12,15 @@ for (const [action, policy] of Object.entries(ACTION_POLICY).filter(([,p]) => p.
       // Deliberately retain an over-permissive stored mode: the gate itself must clamp it.
       p.doc.update((s) => { s.standing[policy.zone] = mode; s.explicit[policy.zone] = true; s.ceiling[policy.zone] = ceiling; return s; });
       const decision = p.authorize({ ...input, action, scope_id: `${mode}-${ceiling}` });
-      assert.equal(decision.decision, ['blocked', 'ask', 'allowed'][Math.min(rank[mode],rank[ceiling],policy.per_call ? 1 : 2)]);
+      assert.equal(decision.decision, ['blocked', 'ask', 'allowed'][Math.min(rank[mode],rank[ceiling])]);
     }
   });
 }
 
-test('fresh defaults preserve public/sandbox reads and ask for private or consequential actions', () => {
+test('fresh defaults allow every action except changing the policy itself', () => {
   const { host } = makeHost();
   for (const [action, policy] of Object.entries(ACTION_POLICY)) {
-    assert.equal(host.permissions.authorize({ ...input, action }).decision, policy.default === 'allow' ? 'allowed' : policy.default === 'ask' ? 'ask' : 'blocked');
+    assert.equal(host.permissions.authorize({ ...input, action }).decision, policy.default === 'user_only' ? 'blocked' : 'allowed', action);
   }
 });
 

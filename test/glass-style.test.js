@@ -22,7 +22,7 @@ test('reduced transparency disables blur and uses opaque surfaces in both themes
 });
 
 test('backdrop blur is restricted to shell surfaces, not nested cards or bubbles', () => {
-  const allowed = new Set(['.rail', '.chat-head', '.composer', '.ctx-menu', '.banner', '.tabs', '#app-settings', '#app-settings::backdrop']);
+  const allowed = new Set(['.rail', '.chat-head', '.composer', '.ctx-menu', '.banner', '.tabs', '#app-settings', '#app-settings::backdrop', '#autonomy-notice::backdrop']);
   const clean = css.replace(/\/\*[\s\S]*?\*\//g, '');
   for (const [, selectors, body] of clean.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     if (!/backdrop-filter:/.test(body)) continue;

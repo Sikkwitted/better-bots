@@ -200,11 +200,11 @@ test('the permissions panel renders every zone with its standing mode and ceilin
   assert.equal(cards.length, 4, 'one card per permission zone');
   const local = cards.find((c) => c.dataset.zone === 'local');
   assert.ok(local, 'the local zone is described');
-  assert.match(textOf(local), /built-in defaults/i);
-  const badge = textOf(local).match(/Built-in defaults/);
-  assert.ok(badge, 'an unexplicit zone is honestly labelled defaults, not a chosen mode');
+  assert.match(textOf(local), /built-in default — bots work without asking/i);
+  const badge = textOf(local).match(/Built-in default/);
+  assert.ok(badge, 'an unexplicit zone is honestly labelled the default, not a chosen mode');
   const buttons = local.querySelectorAll('button');
-  assert.equal(buttons.find((b) => b.dataset.mode === 'ask').disabled, false, 'default Ask can still be explicitly selected');
+  assert.equal(buttons.find((b) => b.dataset.mode === 'ask').disabled, false, 'Ask can be chosen over the default');
   assert.equal(buttons.find((b) => b.dataset.mode === 'always').disabled, false);
   assert.equal(buttons.find((b) => b.dataset.mode === 'never').disabled, false);
 });
@@ -212,7 +212,7 @@ test('the permissions panel renders every zone with its standing mode and ceilin
 test('an Always choice made through an approval card is visible and reversible', async () => {
   const cards = permissionCards();
   const sandbox = cards.find((c) => c.dataset.zone === 'sandbox');
-  assert.match(textOf(sandbox), /built-in defaults/i, 'an always in force is shown even when it was a default');
+  assert.match(textOf(sandbox), /built-in default/i, 'an always in force is shown even when it was a default');
   const buttons = sandbox.querySelectorAll('button');
   assert.equal(buttons.find((b) => b.dataset.mode === 'always').disabled, false, 'an unexplicit default can be re-affirmed explicitly');
   const ask = buttons.find((b) => b.dataset.mode === 'ask');
@@ -436,6 +436,7 @@ test('an Always-to-Ask reversal persists through the real permission service', a
   // The user answers a real approval card with Always (the resolver the
   // server route calls), then reverses it through the panel's endpoint.
   const service = new PermissionService({ dir, clock, audit });
+  service.setStandingMode('local', 'ask', { actor: 'user' }); // cards appear only under Ask
   const decision = service.authorize({ agent_id: 'agt_x', action: 'local.write_file', target: '/fixture/target', scope_id: 's1' });
   assert.equal(decision.decision, 'ask');
   assert.equal(service.resolve(decision.request.id, 'always', { actor: 'user' }).ok, true);
@@ -499,7 +500,7 @@ test('the real permission service proves explicit Ask changes what actually runs
   // With no explicit choice, a public web read still allows (its default),
   // which is exactly why a stored default Ask must not be shown as "Ask in force".
   assert.equal(service.effectivePolicy('web.read_public').mode, 'always', 'public reads default to allow while the zone is unexplicit');
-  assert.equal(service.effectivePolicy('local.read_file').mode, 'ask', 'risky local reads already ask by default');
+  assert.equal(service.effectivePolicy('local.read_file').mode, 'always', 'local reads run without asking by default too');
 
   // Choosing Ask explicitly applies to the whole zone, default-allow included.
   assert.equal(service.setStandingMode('external', 'ask', { actor: 'user' }), 'ask');

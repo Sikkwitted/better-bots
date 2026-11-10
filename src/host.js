@@ -149,7 +149,7 @@ export function describeExchange({ agent, payload, text, nameOf = (id) => id }) 
 }
 
 export class Host {
-  constructor({ dir, adapter, clock = systemClock, window_count = 3, workspace = null, approval_mode = 'continue', web = null, desktop = null, turn_log = true, memory_engine = null, provider_retry_delays_ms = PROVIDER_RETRY_DELAYS_MS, platform = process.platform }) {
+  constructor({ dir, adapter, clock = systemClock, window_count = 3, workspace = null, approval_mode = 'continue', web = null, desktop = null, turn_log = true, memory_engine = null, provider_retry_delays_ms = PROVIDER_RETRY_DELAYS_MS }) {
     this.dir = dir;
     // The data folder holds keys, transcripts and memory: private when the host creates it.
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
@@ -182,7 +182,7 @@ export class Host {
     this.messages.attachRooms(this.rooms);
     this.coordination = new CoordinationPolicy({ dir: this.dir, audit: this.audit, rooms: this.rooms });
     this.computer = new ComputerService({ dir, clock, audit: this.audit, window_count, backend: desktop ?? createDesktopBackend({ dir, workspace: this.workspace, vnc_base: 'vnc://sandbox-1' }) });
-    this.permissions = new PermissionService({ dir, clock, audit: this.audit, platform });
+    this.permissions = new PermissionService({ dir, clock, audit: this.audit });
     this.workflows = new WorkflowStore({ dir, clock, audit: this.audit, registry: this.registry });
     this.deskSettings = new JsonDoc(path.join(dir, 'desks.json'), { desks: {} });
     this.registry.knownDesks = () => Object.keys(this.deskSettings.read().desks ?? {});
@@ -1670,6 +1670,7 @@ export class Host {
       standing_permissions: this.permissions.doc.read().standing,
       explicit_permissions: this.permissions.doc.read().explicit,
       permission_ceilings: this.permissions.doc.read().ceiling,
+      autonomy_acknowledged: Boolean(this.permissions.doc.read().autonomy_acknowledged_at),
       computer: this.computer.describe(),
     };
   }
