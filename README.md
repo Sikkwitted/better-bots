@@ -1,11 +1,32 @@
 # Better Bots
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/D8H128XLY9)
+**An open-source, self-hosted multi-agent harness, like Grok Bot, that runs on
+your own computer.** Send one message and a team of bots works until the job is
+done. Each bot has its own browser, desktop, memory and the apps you connect, and
+an independent checker tests the work before you see it.
 
-Better Bots lets you build your own team of AI helpers, called bots, that work
-together on a job the way people on a team would. You decide the steps, give each
-bot one step, and they keep working in the background on your own computer, even
-when the app is closed.
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+![Mac | Linux](https://img.shields.io/badge/runs%20on-Mac%20%7C%20Linux-informational)
+![Models](https://img.shields.io/badge/models-Claude%20%7C%20ChatGPT%20%7C%20local-8A2BE2)
+[![ko-fi](https://img.shields.io/badge/support-ko--fi-ff5e5b)](https://ko-fi.com/D8H128XLY9)
+
+![A lead bot reports back after three teammates researched, wrote and fact-checked a report](docs/images/console.png)
+<sub>Example run: the lead bot hands out the steps, a researcher, a writer and a
+fact-checker do them, and the lead reports back with the finished file.</sub>
+
+```sh
+git clone https://github.com/Sikkwitted/better-bots.git && cd better-bots && ./install.sh
+```
+
+- **Autonomous by default.** Bots keep working without stopping to ask, even when
+  the app is closed. Turn on **Ask** for any area if you want approval first.
+- **A team, not one chatbot.** A lead bot splits the job into steps and gives each
+  step to the right bot.
+- **Checked before you trust it.** A fact-checker in its own room judges the
+  finished work without seeing how it was made.
+- **Any model.** Claude, ChatGPT (an API key or your ChatGPT subscription), local
+  models through Ollama, and many others. Mix them on one team.
+- **Yours.** It runs on your machine, keeps your data there, and is Apache 2.0.
 
 There are no ready-made bots. You build the team for the work you want done.
 
@@ -56,6 +77,8 @@ like Gmail, GitHub, Slack and Notion.
 > the accounts and keys you give them, without asking you first. Install it only
 > on a computer you're comfortable letting them use, keep backups, and read
 > [SECURITY.md](SECURITY.md).
+
+<img src="docs/images/notice.png" alt="The first-open notice: your bots work on their own" width="640">
 
 ## Install
 
