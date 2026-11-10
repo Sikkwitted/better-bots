@@ -10,8 +10,7 @@ test('every external tool category honors saved modes, including new unreviewed 
   const p=reopenHost({dir}).host.permissions;
   for(const [action,policy] of Object.entries(ACTION_POLICY).filter(([,p])=>p.zone==='external')) {
    const decision=p.authorize({agent_id:'a',action,target:'exact target',scope_id:`${mode}-${action}`,tool:'brand_new_tool'});
-   // Spending, deleting, publishing, sending and credential changes ask every time, even under "always".
-   assert.equal(decision.decision,{always:policy.per_call?'ask':'allowed',ask:'ask',never:'blocked'}[mode],action);
+   assert.equal(decision.decision,{always:'allowed',ask:'ask',never:'blocked'}[mode],action);
   }
  }
 });
@@ -28,26 +27,24 @@ test('Settings Always releases an already waiting reviewed connected tool exactl
  for(let i=0;i<100&&!host.permissions.pendingRequests().length;i++)await new Promise(r=>setTimeout(r,10));
  assert.equal(host.permissions.pendingRequests().length,1);
  const request=host.permissions.pendingRequests()[0];
- // Simulate a stored card created by the previous version.
- host.permissions.doc.update(s=>{s.requests[request.id].per_call=true;return s});
- assert.equal(host.permissions.pendingRequests()[0].per_call,false);
  host.permissions.setStandingMode('external','always');
  await Promise.race([draining,new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error('wait did not release')),2000);timer.unref()})]);
  assert.equal(executions,1);
  assert.equal(host.permissions.pendingRequests().length,0);
 });
 
-test('consequential external actions ask every time and cannot be granted a standing always',()=>{
+test('consequential external actions follow the standing choice like everything else',()=>{
  const {host}=makeHost();
- host.permissions.setStandingMode('external','always');
- for(const action of ['external.pay','external.delete','external.publish','external.send','external.credentials','external.unclassified']) {
-  assert.equal(ACTION_POLICY[action].per_call,true,action);
-  const first=host.permissions.authorize({agent_id:'a',action,target:'exact',scope_id:'s'});
-  assert.equal(first.decision,'ask',action);
-  assert.equal(first.request.per_call,true);
-  assert.equal(host.permissions.resolve(first.request.id,'always').reason,'exact_approval_required',action);
- }
- // Reading, reviewed tools and the bot's own browser follow the standing choice.
- for(const action of ['web.read_public','integration.read','integration.act','external.browser'])
+ const actions=['external.pay','external.delete','external.publish','external.send','external.credentials','external.unclassified','web.read_public','integration.read','integration.act','external.browser'];
+ // Autonomous by default: nothing asks, not even paying or changing credentials.
+ for(const action of actions) {
+  assert.equal(ACTION_POLICY[action].per_call,undefined,action);
   assert.equal(host.permissions.authorize({agent_id:'a',action,target:'exact',scope_id:'s'}).decision,'allowed',action);
+ }
+ // Ask brings the card back, and answering Always returns the zone to working alone.
+ host.permissions.setStandingMode('external','ask');
+ const first=host.permissions.authorize({agent_id:'a',action:'external.pay',target:'exact',scope_id:'s2'});
+ assert.equal(first.decision,'ask');
+ assert.equal(host.permissions.resolve(first.request.id,'always').ok,true);
+ assert.equal(host.permissions.authorize({agent_id:'a',action:'external.pay',target:'other',scope_id:'s3'}).decision,'allowed');
 });

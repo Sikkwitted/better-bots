@@ -451,6 +451,7 @@ test('an approval card can be answered, and the waiting turn then proceeds', asy
     script: () => [{ type: 'tool_call', id: 't1', name: 'LocalReadFile', input: { path: '/etc/hosts' } }],
   });
   host.approval_mode = 'wait';
+  host.permissions.setStandingMode('local', 'ask'); // cards appear only where the person chose Ask
   host.registry.create({ id: 'agt_a', profile: { name: 'Ada' } });
   const server = createServer({ host, live: false });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -493,6 +494,7 @@ test('denying the card blocks the action for real', async () => {
     script: () => [{ type: 'tool_call', id: 't1', name: 'LocalWriteFile', input: { path: '/tmp/better-bots-should-not-exist', content: 'x' } }],
   });
   host.approval_mode = 'wait';
+  host.permissions.setStandingMode('local', 'ask'); // cards appear only where the person chose Ask
   host.registry.create({ id: 'agt_a', profile: { name: 'Ada' } });
 
   const turn = (async () => {

@@ -22,7 +22,7 @@ class FakeDesktop {
 
 function hostWith(desktop, script) {
   const dir = tmpDir();
-  const host = new Host({ dir, adapter: new ScriptedAdapter(oneStep(script)), clock: fixedClock(), window_count: 2, desktop, platform: 'linux' });
+  const host = new Host({ dir, adapter: new ScriptedAdapter(oneStep(script)), clock: fixedClock(), window_count: 2, desktop });
   for (const id of ['agt_a', 'agt_b']) host.registry.create({ id, profile: { name: id.toUpperCase() } });
   return host;
 }
@@ -89,18 +89,15 @@ test('UseScreen drives the display through the backend and records the screensho
   });
   host.userRequest({ agent_id: 'agt_a', text: 'open' });
   await host.drain();
-  host.approval_mode = 'wait';
-  const authorize = host.permissions.authorize.bind(host.permissions);
-  host.permissions.authorize = (args) => { const result = authorize(args); if (result.decision === 'ask') host.permissions.resolve(result.request.id, 'allow_once'); return result; };
-  host.userRequest({ agent_id: 'agt_a', text: 'browse' });
+  host.userRequest({ agent_id: 'agt_a', text: 'browse' }); // runs without a card by default
   await host.drain();
   const result = host.transcripts.all('agent', 'agt_a').find((e) => e.kind === 'tool_result' && e.name === 'UseScreen').result;
   assert.equal(result.ok, true);
   assert.equal(result.performed, true);
-  assert.equal(result.screenshot, 'window-0-2.png');
+  assert.equal(result.screenshot, 'window-0-1.png');
   assert.deepEqual(desktop.calls.at(-1), ['perform', 0, 'open_url', { url: 'https://example.com' }]);
-  assert.equal(host.computer.assignments()[0].last_screenshot, 'window-0-2.png');
-  assert.equal(host.status().agents.find((a) => a.id === 'agt_a').window.last_screenshot, 'window-0-2.png');
+  assert.equal(host.computer.assignments()[0].last_screenshot, 'window-0-1.png');
+  assert.equal(host.status().agents.find((a) => a.id === 'agt_a').window.last_screenshot, 'window-0-1.png');
 });
 
 test('window theft is stopped before the backend is touched', async () => {

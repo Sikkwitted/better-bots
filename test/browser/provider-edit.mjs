@@ -8,6 +8,7 @@ const {host}=makeHost({script:()=>[say('done')]});
 const providers=new ProviderStore({dir:host.dir});
 providers.addProvider({label:'Example',base_url:'https://example.test/v1',key:'fixture-example-key'});
 const catalog={list:async()=>({models:[],providers:[]}),invalidate(){}};
+host.permissions.acknowledgeAutonomy(); // the first-open notice has been accepted
 const server=createServer({host,providers,catalog,live:false});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const browser=await chromium.launch({headless:true});

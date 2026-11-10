@@ -1,18 +1,30 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {makeHost,reopenHost,call} from './helpers.js';
-function setup(script){const made=makeHost({script});for(const id of ['a','b','c'])made.host.registry.create({id,profile:{name:id}});return made;}
-test('sequential tool calls cannot fan out without approval',async()=>{
- const {host}=setup(ctx=>ctx.agent_id==='a'?[call('SendToAgent',{target_id:'b',message:'one'}),call('SendToAgent',{target_id:'c',message:'two'})]:[]);
+function setup(script,{ask=true}={}){const made=makeHost({script});for(const id of ['a','b','c'])made.host.registry.create({id,profile:{name:id}});
+ if(ask)made.host.permissions.setStandingMode('coordination','ask'); // the approval tests below run where the person chose Ask
+ return made;}
+// Under Ask every send waits for the person. These tests have the person approve
+// plain handoffs, so what is left to check is the rule for adding recipients.
+function approveHandoffs(host){const authorize=host.permissions.authorize.bind(host.permissions);
+ host.permissions.authorize=args=>{let r=authorize(args);if(r.decision==='ask'&&args.action==='coordination.handoff'){host.permissions.resolve(r.request.id,'allow_once');r=authorize(args);}return r;};}
+test('by default a bot hands work to the rest of the team without asking',async()=>{
+ const {host}=setup(ctx=>ctx.agent_id==='a'?[call('SendToAgent',{target_id:'b',message:'one'}),call('SendToAgent',{target_id:'c',message:'two'})]:[],{ask:false});
+ host.userRequest({agent_id:'a',text:'one task'});await host.drain();
+ assert.deepEqual(host.messages.allEnvelopes().map(e=>e.target_id),['b','c']);
+ assert.equal(host.permissions.pendingRequests().length,0);
+});
+test('under Ask, sequential tool calls cannot fan out without approval',async()=>{
+ const {host}=setup(ctx=>ctx.agent_id==='a'?[call('SendToAgent',{target_id:'b',message:'one'}),call('SendToAgent',{target_id:'c',message:'two'})]:[]);approveHandoffs(host);
  host.userRequest({agent_id:'a',text:'one task'});await host.drain();
  assert.deepEqual(host.messages.allEnvelopes().map(e=>e.target_id),['b']);
  assert.ok(Object.values(host.permissions.doc.read().requests).some(r=>r.action==='coordination.fanout'));
 });
 test('explicit user recipient set permits intended team and persists through restart',async()=>{
  const {host,dir,clock}=setup(ctx=>ctx.agent_id==='a'?[call('SendToAgent',{target_id:'b',message:'one'}),call('SendToAgent',{target_id:'c',message:'two'})]:[]);
- const run=host.userRequest({agent_id:'a',text:'team',authorized_recipients:['b','c']});await host.drain();assert.equal(host.messages.allEnvelopes().length,2);
+ approveHandoffs(host);const run=host.userRequest({agent_id:'a',text:'team',authorized_recipients:['b','c']});await host.drain();assert.equal(host.messages.allEnvelopes().length,2);
  const {host:again}=reopenHost({dir,clock});assert.equal(again.coordination.requiresApproval({id:'next',agent_id:'b',payload:{coordination_id:run.id}},'c'),false);
 });
 test('handoffs cannot launder a task recipient set',async()=>{
- const {host}=setup(ctx=>ctx.agent_id==='a'?[call('SendToAgent',{target_id:'b',message:'one'})]:ctx.agent_id==='b'?[call('SendToAgent',{target_id:'c',message:'two'})]:[]);
+ const {host}=setup(ctx=>ctx.agent_id==='a'?[call('SendToAgent',{target_id:'b',message:'one'})]:ctx.agent_id==='b'?[call('SendToAgent',{target_id:'c',message:'two'})]:[]);approveHandoffs(host);
  host.userRequest({agent_id:'a',text:'task'});await host.drain();assert.deepEqual(host.messages.allEnvelopes().map(e=>e.target_id),['b']);
 });
 test('reply and retries are allowed; additional recipient and room require approval',()=>{

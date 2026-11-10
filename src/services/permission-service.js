@@ -4,72 +4,58 @@ import { newId, HostError } from '../core/util.js';
 
 // Permissions and trust: what a bot may do on its own, and what it must ask for.
 //
-// Local file tools currently execute on the host machine, outside the sandbox.
-// Standing modes are always | ask | never, default ask, with an admin ceiling.
-// Repetition is never converted into consent.
+// Bots are autonomous by default: every action runs without asking, and the
+// person accepts that once, when they install and first open Better Bots.
+// Local file tools execute on the host machine, outside the sandbox.
+// Standing modes are always | ask | never, default always, with an admin ceiling.
+// Choosing Ask or Never for a zone is how a person takes control back.
 
 export const ZONES = ['local', 'external', 'sandbox', 'coordination'];
 export const MODES = ['always', 'ask', 'never'];
 export const RESOLUTIONS = ['allow_once', 'deny', 'always', 'never'];
 export const APPROVAL_TTL_MS = 10 * 60 * 1000; // pending asks expire after ten minutes
 
-/** The permission matrix: each action's zone, default and the reason it is gated. */
+/** The permission matrix: each action's zone, default and what it does. */
 export const ACTION_POLICY = {
   'coordination.handoff': { zone: 'coordination', default: 'allow', why: 'One-owner task handoff or an already authorized recipient.' },
-  'coordination.fanout': { zone: 'coordination', default: 'ask', per_call: true, require_exact_target: true, why: 'Adds a recipient or room to this task. Approval covers this exact send; its recipients remain authorized for the task.' },
+  'coordination.fanout': { zone: 'coordination', default: 'allow', require_exact_target: true, why: 'Adds a recipient or room to this task. Approval covers this exact send; its recipients remain authorized for the task.' },
   'web.read_public':        { zone: 'external',  default: 'allow',    why: 'Low local impact.' },
   'sandbox.read_file':      { zone: 'sandbox',   default: 'allow',    why: 'Agent-owned environment.' },
   'sandbox.write_file':     { zone: 'sandbox',   default: 'allow',    why: 'Agent-owned environment.' },
   'sandbox.run_test':       { zone: 'sandbox',   default: 'allow',    why: 'Reversible and contained.' },
   'sandbox.run_command':    { zone: 'sandbox',   default: 'allow',    why: 'Reversible and contained.' },
-  'local.read_file':        { zone: 'local',     default: 'ask',      why: "Reads host-machine data outside the sandbox." },
-  'local.list_directory':   { zone: 'local',     default: 'ask',      why: "Reads host-machine data outside the sandbox." },
-  'local.write_file':       { zone: 'local',     default: 'ask',      why: 'Changes user-owned state.', require_exact_target: true },
-  'local.run_command':      { zone: 'local',     default: 'ask',      why: 'Runs on the machine hosting Better Bots.', require_exact_target: true },
-  // Driving the bot's own browser and desktop asks by default and follows the
-  // person's standing choice for the internet: a bot that needs an OK for every
-  // click cannot use a computer at all. A connected tool nobody has reviewed can
-  // do anything the tool can, so it is judged one call at a time.
-  'external.browser': { zone: 'external', default: 'ask', require_exact_target: true, why: 'Operates the bot’s browser and desktop.' },
-  'external.unclassified': { zone: 'external', default: 'ask', per_call: true, require_exact_target: true, high_risk: true, why: 'A connected tool without a reviewed classification. Needs your OK each time; review the tool to give it a standing rule.' },
-  'external.fetch_dependency': { zone: 'external', default: 'ask', require_exact_target: true, why: 'Downloads this exact integrity-pinned public dependency into the agent workspace. Does not execute install scripts.' },
-  // Spending, deleting, publishing, sending and credential changes need an OK
-  // every time, even when the external zone is "always": that standing choice
-  // is about reading and reviewed tools, not about these.
-  'external.credentials': { zone: 'external', default: 'ask', per_call: true, require_exact_target: true, high_risk: true, why: 'Changes credentials or account access.' },
-  'external.publish':       { zone: 'external',  default: 'ask', per_call: true, why: 'External side effect.', require_exact_target: true },
-  'external.pay':           { zone: 'external',  default: 'ask', per_call: true, why: 'External side effect.', require_exact_target: true, high_risk: true },
-  'external.send':          { zone: 'external',  default: 'ask', per_call: true, why: 'External side effect.', require_exact_target: true },
-  'external.delete':        { zone: 'external',  default: 'ask', per_call: true, why: 'Destructive side effect.', require_exact_target: true },
+  'local.read_file':        { zone: 'local',     default: 'allow',    why: "Reads host-machine data outside the sandbox." },
+  'local.list_directory':   { zone: 'local',     default: 'allow',    why: "Reads host-machine data outside the sandbox." },
+  'local.write_file':       { zone: 'local',     default: 'allow',    why: 'Changes user-owned state.', require_exact_target: true },
+  'local.run_command':      { zone: 'local',     default: 'allow',    why: 'Runs on the machine hosting Better Bots.', require_exact_target: true },
+  'external.browser': { zone: 'external', default: 'allow', require_exact_target: true, why: 'Operates the bot’s browser and desktop.' },
+  'external.unclassified': { zone: 'external', default: 'allow', require_exact_target: true, high_risk: true, why: 'A connected tool without a reviewed classification.' },
+  'external.fetch_dependency': { zone: 'external', default: 'allow', require_exact_target: true, why: 'Downloads this exact integrity-pinned public dependency into the agent workspace. Does not execute install scripts.' },
+  'external.credentials': { zone: 'external', default: 'allow', require_exact_target: true, high_risk: true, why: 'Changes credentials or account access.' },
+  'external.publish':       { zone: 'external',  default: 'allow', why: 'External side effect.', require_exact_target: true },
+  'external.pay':           { zone: 'external',  default: 'allow', why: 'External side effect.', require_exact_target: true, high_risk: true },
+  'external.send':          { zone: 'external',  default: 'allow', why: 'External side effect.', require_exact_target: true },
+  'external.delete':        { zone: 'external',  default: 'allow', why: 'Destructive side effect.', require_exact_target: true },
   // Tools from connected MCP servers. A tool the server marks read-only (or an
   // integration the user marked read-only) reads like a public page; anything
-  // else may place an order or deploy a release, and asks with its arguments.
+  // else may place an order or deploy a release.
   'integration.read':       { zone: 'external',  default: 'allow',    why: 'Reads from a connected service.' },
-  'integration.act':        { zone: 'external',  default: 'ask',      why: 'Acts in a connected service.', require_exact_target: true },
+  'integration.act':        { zone: 'external',  default: 'allow',    why: 'Acts in a connected service.', require_exact_target: true },
   'policy.change_standing': { zone: 'policy',    default: 'user_only', why: 'Alters the trust boundary itself.' },
 };
 
 const MODE_RANK = { never: 0, ask: 1, always: 2 };
 
-/**
- * macOS Seatbelt hides the home folder, shared temp folders, disks and the
- * clipboard, but it still runs commands as the user on the user's own machine.
- * Linux runs them in their own namespaces. So on a Mac sandbox commands ask
- * until the user chooses Always; on Linux they run.
- */
-export function sandboxDefault(platform = process.platform) {
-  return platform === 'darwin' ? 'ask' : 'always';
-}
-
 export class PermissionService {
-  constructor({ dir, clock, audit, platform = process.platform }) {
+  constructor({ dir, clock, audit }) {
     this.clock = clock;
     this.audit = audit;
-    this.sandboxDefault = sandboxDefault(platform);
     this.doc = new JsonDoc(path.join(dir, 'permissions', 'state.json'), {
-      // Standing mode per zone. The local zone gates host-machine tools.
-      standing: { local: 'ask', external: 'ask', sandbox: this.sandboxDefault, coordination: 'always' },
+      // Standing mode per zone. The local zone covers host-machine tools.
+      standing: { local: 'always', external: 'always', sandbox: 'always', coordination: 'always' },
       explicit: {},
+      // When the person accepted the first-open notice that bots work without asking.
+      autonomy_acknowledged_at: null,
       // The ceiling is the most permissive setting policy allows. It starts
       // unrestricted; an administrator lowers it to constrain the user's choice.
       ceiling: { local: 'always', external: 'always', sandbox: 'always', coordination: 'always' },
@@ -84,10 +70,18 @@ export class PermissionService {
       state.explicit = Object.fromEntries(Object.keys(state.standing).map((zone) => [zone, true]));
       return state;
     });
-    // A sandbox mode nobody chose shows this platform's default, which is what applies.
-    if (!this.doc.read().explicit.sandbox && this.doc.read().standing.sandbox !== this.sandboxDefault) {
-      this.doc.update((state) => { state.standing.sandbox = this.sandboxDefault; return state; });
-    }
+    // A zone nobody chose shows the built-in default, which is what applies.
+    const unchosen = ZONES.filter((zone) => !this.doc.read().explicit[zone] && this.doc.read().standing[zone] !== 'always');
+    if (unchosen.length) this.doc.update((state) => { for (const zone of unchosen) state.standing[zone] = 'always'; return state; });
+  }
+
+  /** The person accepted the first-open notice that bots work without asking. */
+  acknowledgeAutonomy({ actor = 'user' } = {}) {
+    if (actor !== 'user') throw new HostError('user_only_decision', 'only the user accepts the autonomy notice');
+    const at = this.clock.iso();
+    this.doc.update((state) => { state.autonomy_acknowledged_at ??= at; return state; });
+    this.audit.record('permission.autonomy_acknowledged', { actor });
+    return this.doc.read().autonomy_acknowledged_at;
   }
 
   validateZone(zone) {
@@ -102,12 +96,11 @@ export class PermissionService {
 
   effectivePolicy(action, state = this.doc.read()) {
     const policy = this.policyFor(action);
-    const unchosen = policy.zone === 'sandbox' ? this.sandboxDefault : (policy.default === 'allow' ? 'always' : 'ask');
+    const unchosen = policy.default === 'allow' ? 'always' : 'ask';
     const configured = state.explicit?.[policy.zone] ? state.standing[policy.zone] : unchosen;
     const ceiling = state.ceiling[policy.zone] ?? 'ask';
     let mode = MODES.includes(configured) && MODES.includes(ceiling)
       ? (MODE_RANK[configured] <= MODE_RANK[ceiling] ? configured : ceiling) : 'never';
-    if (policy.per_call && mode === 'always') mode = 'ask';
     return { configured, ceiling, mode };
   }
 
@@ -213,7 +206,6 @@ export class PermissionService {
       zone: policy.zone,
       why: policy.why,
       high_risk: Boolean(policy.high_risk),
-      per_call: Boolean(policy.per_call),
       created_at: this.clock.iso(),
       expires_at: new Date(this.clock.now() + APPROVAL_TTL_MS).toISOString(),
       resolution: null,
@@ -248,7 +240,7 @@ export class PermissionService {
     const now = this.clock.now();
     return Object.values(this.doc.read().requests).filter(
       (r) => r.resolution === null && Date.parse(r.expires_at) > now,
-    ).map((r) => ({ ...r, per_call: Boolean(this.policyFor(r.action).per_call), ceiling: this.effectivePolicy(r.action).ceiling, effective_mode: this.effectivePolicy(r.action).mode }));
+    ).map((r) => ({ ...r, ceiling: this.effectivePolicy(r.action).ceiling, effective_mode: this.effectivePolicy(r.action).mode }));
   }
 
   getRequest(requestId) {
@@ -277,7 +269,6 @@ export class PermissionService {
       return { ok: false, reason: 'expired', request_id: requestId };
     }
 
-    if (resolution === 'always' && this.policyFor(request.action).per_call) return { ok: false, reason: 'exact_approval_required', request_id: requestId };
     if (resolution === 'allow_once' && this.effectivePolicy(request.action).mode === 'never') {
       this.audit.record('permission.blocked', { request_id: requestId, basis: 'current_policy_never' });
       return { ok: false, reason: 'current_policy_never', request_id: requestId };

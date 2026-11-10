@@ -7,6 +7,7 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 const { host } = makeHost({ script: () => [say('done')] });
 host.registry.create({ id: 'agt_ui', profile: { name: 'Morgan', model: 'glm-5.3-flash', model_provider: 'glm' } });
 for (let i = 0; i < 35; i++) host.transcripts.append('agent', 'agt_ui', { kind: 'agent_text', text: `Message ${i}: ` + 'Example content '.repeat(12) });
+host.permissions.acknowledgeAutonomy(); // the first-open notice has been accepted
 const server = createServer({ host, live: false, catalog: { list: async () => ({ models: [{id:'glm-5.3-flash',provider:'glm'}],providers:[] }) } });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const browser = await chromium.launch({headless:true});

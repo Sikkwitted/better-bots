@@ -49,6 +49,25 @@ class InstallerTests(unittest.TestCase):
                 with self.assertRaises(FileExistsError):
                     module.private_env(target, {'API_KEY':'replacement'}, account.pw_name)
 
+    def test_installs_only_after_the_autonomy_warning_is_accepted(self):
+        def confirm(accept=None):
+            env = {k: v for k, v in os.environ.items() if k != 'BETTER_BOTS_ACCEPT_AUTONOMY'}
+            if accept is not None: env['BETTER_BOTS_ACCEPT_AUTONOMY'] = accept
+            # No controlling terminal, as in CI: nobody is there to type yes.
+            return subprocess.run(['bash', '-c', 'source "$1"; confirm_autonomy || exit 1', '_', str(ROOT/'deploy/linux/install.sh')],
+                                  capture_output=True, text=True, env=env, stdin=subprocess.DEVNULL, start_new_session=True)
+        refused = confirm()
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn('without asking you first', refused.stdout)
+        self.assertIn('BETTER_BOTS_ACCEPT_AUTONOMY=yes', refused.stderr)
+        self.assertNotEqual(confirm('no').returncode, 0)
+        accepted = confirm('yes')
+        self.assertEqual(accepted.returncode, 0)
+        self.assertIn('keeps working until the task is done', accepted.stdout)
+        script = (ROOT/'deploy/linux/install.sh').read_text()
+        self.assertLess(script.index('confirm_autonomy || exit 1'), script.index('exec sudo env BETTER_BOTS_ACCEPT_AUTONOMY=yes'),
+                        'the warning comes before the password prompt, and the root pass does not ask again')
+
     def test_hindsight_is_opt_in_with_its_own_port(self):
         def parse(*args):
             script = 'source "$1"; shift; parse_args "$@" && echo "$WITH_HINDSIGHT $HINDSIGHT_PORT $CHECK_ONLY"'

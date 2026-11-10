@@ -49,18 +49,20 @@ your home folder, `/private/var/folders`, `/private/tmp` (`/tmp`) and `/Volumes`
 except the workspace itself; it also denies the clipboard (pasteboard) services.
 It does not hide the rest of the filesystem a normal user can read (system
 folders, `/Users/Shared`, other readable locations), other system services, or
-the fact that commands run as your user. For that reason sandbox commands ask
-first on macOS until you choose Always; on Linux they run by default. Without
-either sandbox, shell execution fails closed.
+the fact that commands run as your user. Sandbox commands run without asking on
+both systems unless you choose Ask for the bots' workspace. Without either
+sandbox, shell execution fails closed.
 
-**Permissions.** Each action has a zone with a standing mode (Always, Ask, Never)
-under an administrator ceiling. Paying, credential changes, publishing, sending
-and deleting ask every time, even when the external zone is Always, and so do
-calls to connected tools nobody has reviewed (`external.unclassified`); reviewing
-a tool gives it a standing rule. Clicks and typing in a bot's own browser and
-desktop (`external.browser`) ask by default and follow the external zone's
-standing mode: with Always, a bot signed in to a site can act there as you
-without asking. Reading host files outside the sandbox asks by default.
+**Bots are autonomous by default.** Every action runs without asking: reading and
+changing host files and running host commands outside the sandbox, clicks and
+typing in a bot's own browser and desktop (a bot signed in to a site acts there
+as you), calls to connected tools nobody has reviewed (`external.unclassified`),
+and paying, credential changes, publishing, sending and deleting. The installer
+says so and installs only after you type `yes` (`BETTER_BOTS_ACCEPT_AUTONOMY=yes`
+answers for an unattended install), and the console says so again the first time
+it opens. Each action belongs to a zone with a standing mode (Always, Ask, Never)
+under an administrator ceiling: choose Ask or Never for a zone to review or block
+its actions, or have an administrator lower the ceiling.
 
 **Shared memory is untrusted.** Every bot sees user and project memory. A fact a
 bot writes there is kept as a note (log tier), recalled when relevant, never as a
@@ -88,8 +90,8 @@ A bot that gets a program of its own running there, for example a script opened
 from the file manager, can reach services on the host's loopback, including other
 bots' desktops. Shell commands are not affected: they run in the sandbox with no
 network. Until desktops get their own network namespace, give bots a desktop only
-on a machine where that is acceptable, keep the external zone on Ask, and keep
-other sensitive services off that host.
+on a machine where that is acceptable, set the external zone to Ask if you want
+to review what they do there, and keep other sensitive services off that host.
 
 ## Deployment boundaries
 
@@ -97,9 +99,8 @@ other sensitive services off that host.
   with a `BETTER_BOTS_TOKEN` of at least 32 characters.
 - Run the service as its dedicated user. Keep credentials and state outside the
   source checkout with restrictive permissions.
-- Review saved tool permissions and integration trust. External `Always` is a
-  deliberate authorization; `Ask` requires the applicable approval and `Never`
-  blocks the action. Recipient expansion remains separately controlled.
+- Review permissions and integration trust. Every zone starts at `Always`;
+  `Ask` requires the applicable approval and `Never` blocks the action.
 - Back up the data folder (and the Hindsight database, if you use one), verify
   isolated restores, and keep backups private.
 

@@ -310,6 +310,7 @@ test('12. Allow once expires with its scope', async () => {
     script: () => [call('LocalReadFile', { path: '/etc/hosts' })],
   });
   twoAgents(host);
+  host.permissions.setStandingMode('local', 'ask', { actor: 'user' });
 
   host.userRequest({ agent_id: 'agt_a', text: 'read a local file' });
   await host.drain();
@@ -340,6 +341,7 @@ test('13. Never blocks the action', async () => {
 test('14. A denied action is not immediately requested again', async () => {
   const { host } = makeHost({ script: () => [call('LocalReadFile', { path: '/etc/hosts' })] });
   twoAgents(host);
+  host.permissions.setStandingMode('local', 'ask', { actor: 'user' });
 
   const scope = 'scope_under_test';
   const first = host.permissions.authorize({ agent_id: 'agt_a', action: 'local.read_file', target: '/etc/hosts', scope_id: scope });

@@ -38,10 +38,12 @@ have the independent checker test it, send it back with the reason if it fails,
 and keep the lesson when it passes. The next similar job starts from what the last
 one learned.
 
-**You stay in control.** Bots ask you first before anything that matters:
-sending, posting, paying, deleting, or changing passwords and keys. You decide
-what they may do without asking. Everything they do is written down, so you can
-always see what happened and why.
+**Give it one message. It works until it's done.** A bot keeps going until the
+task is finished, using whatever tools it needs without stopping to ask: files,
+commands, the internet and the apps you connect, including sending, posting,
+paying, deleting and changing passwords. If you'd rather a bot ask first, choose
+**Ask** for any area in **App settings → Permissions**. Everything bots do is
+written down, so you can always see what happened and why.
 
 **Use the AI you like.** Claude, ChatGPT (with an API key or your ChatGPT
 subscription), AI that runs entirely on your own computer, and many others.
@@ -50,8 +52,10 @@ subscription), AI that runs entirely on your own computer, and many others.
 in a locked-down area of your computer, work on a schedule, and connect to apps
 like Gmail, GitHub, Slack and Notion.
 
-> **Safety:** bots act with the accounts and keys you give them. Run Better Bots on
-> a computer you're comfortable letting them use, and read [SECURITY.md](SECURITY.md).
+> **Safety:** bots use the tools on the computer Better Bots is installed on, and
+> the accounts and keys you give them, without asking you first. Install it only
+> on a computer you're comfortable letting them use, keep backups, and read
+> [SECURITY.md](SECURITY.md).
 
 ## Install
 
@@ -64,7 +68,8 @@ cd better-bots
 ./install.sh
 ```
 
-Better Bots installs as a normal app with its own icon, then opens in its own
+The installer explains that bots work without asking, and installs once you
+type **yes**. Better Bots installs as a normal app with its own icon, then opens in its own
 window, already signed in. After that, open it like any other app: from Launchpad
 on a Mac, or from the app menu on Linux.
 
@@ -99,9 +104,9 @@ Windows isn't supported yet.
 - **Room:** a meeting between bots, or between you and several bots. Meetings
   have a limit on how long they run, so they always end.
 - **Routine:** a scheduled task: once, every few hours, or at set times.
-- **Approval:** a card asking you to OK an action. For each kind of action you
-  choose **Ask**, **Always** or **Never**. Paying, posting, sending, deleting and
-  changing passwords or keys always ask, whatever you choose.
+- **Approval:** a card asking you to OK an action. Bots work without asking until
+  you choose **Ask** for an area in App settings → Permissions; the choices are
+  **Always**, **Ask** and **Never**.
 
 ## Choosing an AI
 

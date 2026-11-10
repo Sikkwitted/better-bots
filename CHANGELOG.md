@@ -5,6 +5,22 @@ All notable changes to Better Bots are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0, minor
 releases may change behaviour and stored data formats.
 
+## [Unreleased]
+
+### Changed
+
+- **Bots are autonomous by default.** Give a bot a task and it works until the
+  task is done, using every tool it has without asking first: host files and
+  commands, its browser and desktop, connected tools, and paying, sending,
+  posting, deleting and credential changes. Nothing asks every time any more.
+  The installer explains this and installs only after you type `yes`
+  (`BETTER_BOTS_ACCEPT_AUTONOMY=yes` for unattended installs), and the console
+  shows the same notice the first time it opens. Choose **Ask** or **Never** for
+  any zone in App settings → Permissions to review or block it.
+- **Upgrading:** zones you never set switch to the new default, so bots stop
+  asking there; the console shows the notice on its next open. Zones you
+  explicitly set keep your choice.
+
 ## [0.1.0] - Unreleased
 
 The first public preview: a self-hosted harness for running several persistent

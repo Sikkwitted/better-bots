@@ -6,8 +6,8 @@ shell networking.
 
 1. Obtain the exact tarball URL and publisher SHA-512 integrity for an npm package.
 2. Call `FetchDependency` with `url`, `integrity`, and an agent-relative output
-   `path`. The exact download needs approval under Ask; explicit external Always permits
-   it and Never blocks it.
+   `path`. The download runs without asking unless the external zone is set to Ask
+   (approval for this exact download) or Never (blocked).
 3. Decode the saved base64 inside `SandboxRunCommand`, for example
    `base64 -d < dependency.b64 > dependency.tgz`. Extract and use the package
    inside the agent working directory. No scripts execute during the download.
@@ -16,7 +16,7 @@ shell networking.
 5. Call `StartPreview` with the build `directory` and an explicit list of static
    `files` including `index.html`.
 6. Share the returned URL with the reviewer. Local browsers use `url`; the Docker
-   desktop backend on Mac uses `docker_url`. The usual screen approval applies.
+   desktop backend on Mac uses `docker_url`. Screen actions follow the external zone's permission.
 7. After changing the build, start a new snapshot and review it. Stop old previews
    with `StopPreview` or the chat header's Stop preview control.
 

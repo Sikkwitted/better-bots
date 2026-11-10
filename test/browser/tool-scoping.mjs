@@ -4,6 +4,7 @@ import { makeHost, say } from '../helpers.js';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { host } = makeHost({ script: () => [say('Ready.')] });
 host.registry.create({ id: 'scoped', profile: { name: 'Scoped' } });
+host.permissions.acknowledgeAutonomy(); // the first-open notice has been accepted
 const server = createServer({ host, live: false, catalog: { list: async () => ({ models: [], providers: [] }), invalidate() {} } });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const browser = await chromium.launch({ headless: true });

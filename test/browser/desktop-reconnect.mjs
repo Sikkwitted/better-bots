@@ -5,6 +5,7 @@ const {chromium}=await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const {host}=makeHost();
 host.registry.create({id:'agt_reconnect',profile:{name:'Reconnect test'}});
 host.computer.backend={kind:'test',shutdown:async()=>{},vncUrl:()=> 'vnc://127.0.0.1:5901',ensureMonitor:async()=>({real:true})};
+host.permissions.acknowledgeAutonomy(); // the first-open notice has been accepted
 const server=createServer({host,live:false,catalog:{list:async()=>({models:[],providers:[]})}});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const browser=await chromium.launch({headless:true});

@@ -9,6 +9,7 @@ host.registry.create({ id: 'writer', profile: { name: 'Writer', desk: 'A very lo
 const room = host.createRoom({ member_ids: ['reviewer'], purpose: 'Editorial room', memory: 'none' });
 host.deliverPeerMessage({ sender_id: 'editor', target_id: room.id, text: 'Review the outline.' });
 const catalog = { list: async () => ({ models: [{ id: 'old-model', provider: 'deepseek' }, { id: 'new-model', provider: 'deepseek' }], providers: [] }) };
+host.permissions.acknowledgeAutonomy(); // the first-open notice has been accepted
 const server = createServer({ host, live: false, catalog });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const browser = await chromium.launch({ headless: true });
@@ -52,6 +53,7 @@ try {
   assert.equal(await page.locator('#edit-lead').textContent(), 'Desk lead');
   await page.locator('#settings-form [data-cancel]').click();
 
+  host.permissions.setStandingMode('coordination', 'ask'); // cards appear only where the user chose Ask
   const ask = recipient => host.permissions.authorize({ agent_id: 'editor', action: 'coordination.fanout', target: JSON.stringify({ target_id: recipient, recipients: [recipient] }), scope_id: 'outline-task', tool: 'SendToAgent' }).request;
   const first = ask('reviewer');
   host.permissions.attachEvidence(first.id, { screenshot: 'unrelated-screen', view: 'unrelated-desktop-command' });

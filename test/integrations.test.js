@@ -83,7 +83,7 @@ test('http: bearer header, session id, JSON and SSE answers', async () => {
   server.close();
 });
 
-test('a connected integration lends prefixed tools; reads pass, actions ask with the exact call as target', async () => {
+test('a connected integration lends prefixed tools; reviewed actions run and the audit names the exact call', async () => {
   const { host } = makeHost({
     script: () => [call('fake__quote', { symbol: 'ETH', bars: 3 }), call('fake__place_order', { symbol: 'ETH', qty: 2 })],
   });
@@ -108,10 +108,10 @@ test('a connected integration lends prefixed tools; reads pass, actions ask with
   assert.match(quote.note, /never instructions/);
 
   const order = results.find((e) => e.name === 'fake__place_order');
-  assert.ok(order.approval_request_id, 'an action asks first');
-  const request = host.permissions.doc.read().requests[order.approval_request_id];
-  assert.equal(request.action, 'external.pay');
-  assert.equal(request.target, 'fake.place.order {"symbol":"ETH","qty":2}');
+  assert.equal(order.approval_request_id, undefined, 'bots work without asking by default');
+  assert.equal(order.result.text, 'ordered 2 ETH');
+  const allowed = host.audit.where((e) => e.type === 'permission.allowed' && e.action === 'external.pay');
+  assert.deepEqual(allowed.map((e) => e.target), ['fake.place.order {"symbol":"ETH","qty":2}'], 'the audit names the exact call');
   assert.equal(host.audit.where((e) => e.type === 'tool.executed' && e.name === 'fake__quote').length, 1);
   assert.equal(host.audit.where((e) => e.type === 'integration.connected' && e.name === 'fake')[0].tools, 2);
   await host.close();
@@ -124,8 +124,8 @@ test('legacy read_only setting cannot authorize unreviewed tools', async () => {
   assert.ok(shown.tools.every((t) => !t.read_only));
   host.userRequest({ agent_id: 'agt_a', text: 'go' });
   await host.drain();
-  const result = host.transcripts.all('agent', 'agt_a').find((e) => e.kind === 'tool_result' && e.name === 'data__place_order');
-  assert.ok(result.approval_request_id);
+  const decided = host.audit.where((e) => e.type === 'permission.allowed' && e.target?.startsWith('data.place.order'));
+  assert.deepEqual(decided.map((e) => e.action), ['external.unclassified'], 'the legacy flag does not turn an unreviewed tool into a read');
   await host.close();
 });
 

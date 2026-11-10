@@ -163,6 +163,7 @@ async function refresh(reconcileJobs = true) {
   const jobsRevision = jobs.revision;
   const data = await api('GET', '/api/state');
   if (request !== refreshSerial) return;
+  showAutonomyNotice(data.autonomy_acknowledged);
   state.modelProvider = data.model_provider;
   state.roomStartEnabled = data.capabilities?.room_start === true;
   state.agentStopEnabled = data.capabilities?.agent_stop === true;
@@ -2112,9 +2113,9 @@ function renderApprovals() {
       button.type = 'button';
       button.dataset.resolution = resolution;
       button.title = help;
-      const blockedAlways = resolution === 'always' && (request.ceiling !== 'always' || request.per_call);
+      const blockedAlways = resolution === 'always' && request.ceiling !== 'always';
       button.disabled = blockedAlways || (resolution === 'allow_once' && request.effective_mode === 'never');
-      if (blockedAlways) button.title = request.per_call ? 'This kind of action always needs your OK each time, so there is no standing “always”.' : 'An administrator limit stops you from choosing this.';
+      if (blockedAlways) button.title = 'An administrator limit stops you from choosing this.';
       button.onclick = async () => {
         approvalSaving = true;
         button.textContent = `${label} — saving…`;
@@ -2135,8 +2136,8 @@ function renderApprovals() {
     }
     card.append(row);
     // A standing rule reaches every bot, so say so right where it is offered.
-    card.append(el('p', 'hint approval-standing-note', coordination ? 'Allow once covers this recipient for this task. A different recipient needs its own OK.' : request.per_call ? 'This kind of action needs your OK each time.' : `Or set a standing rule for “${words.category}”:`));
-    if (!request.per_call && !coordination) { card.append(standing); card.append(el('p', 'hint', standingRuleHelp(words.zone))); }
+    card.append(el('p', 'hint approval-standing-note', coordination ? 'Allow once covers this recipient for this task. A different recipient needs its own OK.' : `Or set a standing rule for “${words.category}”:`));
+    if (!coordination) { card.append(standing); card.append(el('p', 'hint', standingRuleHelp(words.zone))); }
     box.append(card);
   }
 }
@@ -2169,18 +2170,16 @@ function renderPermissions() {
     const card = el('div', 'card');
     const head = el('h2', null, zoneTitle(zone));
     card.dataset.zone = zone;
-    // An unexplicit zone has no single effective mode: default-allow actions
-    // still allow while risky ones ask, so "defaults" is the honest badge.
-    const eff = el('span', 'chip', chosen ? 'Your choice' : 'Built-in defaults');
+    // A zone nobody chose follows the built-in default: bots work without asking.
+    const eff = el('span', 'chip', chosen ? 'Your choice' : 'Built-in default');
     eff.title = chosen
       ? `You chose: ${MODE_COPY[standing]?.label ?? standing}.`
-      : 'You haven’t chosen yet: harmless actions just happen, risky ones ask you first.';
+      : 'You haven’t chosen yet: bots work without asking.';
     head.append(eff);
     card.append(head);
     card.append(el('p', 'hint', ZONE_COPY[zone]?.note ?? ''));
-    card.append(el('p', 'permission-current', chosen ? `Right now: ${MODE_COPY[standing]?.label ?? standing}.` : 'Right now: built-in defaults — harmless things just happen, risky things ask you first.'));
+    card.append(el('p', 'permission-current', chosen ? `Right now: ${MODE_COPY[standing]?.label ?? standing}.` : 'Right now: built-in default — bots work without asking.'));
     if (ceiling !== 'always') card.append(el('p', 'hint', `An administrator limit means the most you can allow here is “${MODE_COPY[ceiling]?.label ?? ceiling}”.`));
-    if (standing === 'always' && chosen && zone === 'coordination') card.append(el('p', 'hint', 'Sending a task to a new bot or room still needs your OK.'));
     if (standing === 'always' && chosen && zone === 'external') card.append(el('p', 'hint', 'Every connected tool will run without asking, including ones you add later.'));
 
     const row = el('div', 'row');
@@ -2857,6 +2856,29 @@ $('#connect-provider').onclick = () => {
 };
 $('#close-app-settings').onclick = () => $('#app-settings').close();
 $('#close-app-settings-footer').onclick = () => $('#app-settings').close();
+
+// Bots work without asking, so the first open says so before anything else.
+// Escape cannot skip it; only accepting closes it.
+let autonomyAccepted = false;
+function showAutonomyNotice(acknowledged) {
+  const dialog = $('#autonomy-notice');
+  if (acknowledged !== false || autonomyAccepted || dialog.open) return;
+  dialog.showModal();
+}
+$('#autonomy-notice').addEventListener('cancel', event => event.preventDefault());
+$('#accept-autonomy').onclick = async () => {
+  const button = $('#accept-autonomy');
+  button.disabled = true;
+  try {
+    await api('POST', '/api/permissions/acknowledge', {});
+    autonomyAccepted = true;
+    $('#autonomy-notice').close();
+  } catch (err) {
+    banner(`Not saved: ${err.message}`, true);
+  } finally {
+    button.disabled = false;
+  }
+};
 // A backdrop click dismisses the dialog; dragging from an input never does.
 let settingsBackdropDown = false;
 $('#app-settings').addEventListener('pointerdown', event => {

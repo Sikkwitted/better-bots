@@ -20,7 +20,7 @@ host infrastructure. These are virtual Linux desktops on Mac, not macOS desktops
 
 OpenScreen returns the viewing URL. The chat header exposes View / take over once
 the agent has opened a surface. User input through noVNC reaches that same surface.
-Agent actions still require their ownership token and normal exact-call approval.
+Agent actions still require their ownership token and follow the external zone's permission.
 
 Release destroys the browser session and its network. A later owner receives a
 new token and clean session. After host restart, opening an assigned surface resets

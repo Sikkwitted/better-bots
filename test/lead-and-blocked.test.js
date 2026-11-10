@@ -76,7 +76,7 @@ test('ReportBlocked raises an attention item with the screen when the agent hold
     host.computer.assignments().some((w) => w.agent_id === ctx.agent_id)
       ? [call('ReportBlocked', { reason: 'captcha', detail: 'The login page shows a puzzle.', ladder: ['Reloaded the page: puzzle again'] })]
       : [call('OpenScreen', {})]
-  ))), clock: fixedClock(), window_count: 2, desktop, platform: 'linux' });
+  ))), clock: fixedClock(), window_count: 2, desktop });
   host.registry.create({ id: 'agt_a', profile: { name: 'A' } });
   host.userRequest({ agent_id: 'agt_a', text: 'open' });
   await host.drain();
@@ -132,8 +132,9 @@ test('an approval card from an agent with a real screen carries that screen', as
     host.computer.assignments().some((w) => w.agent_id === ctx.agent_id)
       ? [call('LocalReadFile', { path: '/etc/hosts' })]
       : [call('OpenScreen', {})]
-  ))), clock: fixedClock(), window_count: 2, desktop, platform: 'linux' });
+  ))), clock: fixedClock(), window_count: 2, desktop });
   host.registry.create({ id: 'agt_a', profile: { name: 'A' } });
+  host.permissions.setStandingMode('local', 'ask'); // cards appear only where the person chose Ask
   host.userRequest({ agent_id: 'agt_a', text: 'open' });
   await host.drain();
   host.userRequest({ agent_id: 'agt_a', text: 'read' });
@@ -150,6 +151,7 @@ test('an approval card from an agent with a real screen carries that screen', as
 test('an approval card from an agent without a screen has no evidence and still works', async () => {
   const { host } = makeHost({ script: () => [call('LocalReadFile', { path: '/etc/hosts' })] });
   host.registry.create({ id: 'agt_a', profile: { name: 'A' } });
+  host.permissions.setStandingMode('local', 'ask'); // cards appear only where the person chose Ask
   host.userRequest({ agent_id: 'agt_a', text: 'read' });
   await host.drain();
   const requestId = host.transcripts.all('agent', 'agt_a').find((e) => e.kind === 'tool_result' && e.approval_request_id).approval_request_id;
